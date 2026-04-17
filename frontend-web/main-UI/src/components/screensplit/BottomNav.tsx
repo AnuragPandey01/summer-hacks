@@ -1,12 +1,16 @@
 import { Link, useLocation } from "react-router-dom";
-import { Users, Trophy, Sparkles } from "lucide-react";
+import { Users, Trophy, Sparkles, Plus } from "lucide-react";
+
 import { cn } from "@/lib/utils";
 
 const items = [
-  { to: "/groups", icon: Users, label: "Groups" },
+  { to: "/groups", icon: Users, label: "Friends" },
+  { to: "/explore", icon: Plus, label: "Crews" },
   { to: "/leaderboard", icon: Trophy, label: "Rank" },
   { to: "/me", icon: Sparkles, label: "Me" },
 ];
+
+
 
 export function BottomNav() {
   const { pathname } = useLocation();

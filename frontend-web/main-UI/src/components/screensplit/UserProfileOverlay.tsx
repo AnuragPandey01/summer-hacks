@@ -1,0 +1,178 @@
+import { User, store } from "@/lib/mockStore";
+import { cn } from "@/lib/utils";
+import { Flame, Trophy, BarChart3, X, Mail, Globe, BrainCircuit } from "lucide-react";
+
+interface Props {
+  user: User;
+  onClose: () => void;
+}
+
+export function UserProfileOverlay({ user, onClose }: Props) {
+  const avgUsage = Math.round(user.analytics.reduce((s, a) => s + a.usageMinutes, 0) / 7);
+  const weeklyTotal = Math.round(avgUsage * 7);
+  
+  // Calculate top category (simulated from usage store if possible, or just seed)
+  const usage = store.usageFor(user.id);
+  const topApp = usage?.apps.sort((a,b) => b.minutes - a.minutes)[0];
+
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end justify-center px-4 sm:items-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-foreground/60 backdrop-blur-md" />
+      <div
+        className="relative w-full max-w-md bg-background border-4 border-foreground rounded-[2.5rem] p-6 pb-12 animate-rise shadow-[0_-20px_50px_rgba(0,0,0,0.3)] max-h-[90vh] flex flex-col overflow-hidden sm:rounded-[3rem]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button 
+            onClick={onClose}
+            className="absolute top-6 right-6 h-10 w-10 grid place-items-center rounded-full bg-muted hover:bg-accent transition-colors border-2 border-foreground shadow-[2px_2px_0px_rgba(0,0,0,1)] z-10"
+            aria-label="Close"
+        >
+            <X className="h-5 w-5" />
+        </button>
+        
+        <div className="mx-auto h-2 w-16 rounded-full bg-foreground/10 mb-8 shrink-0" />
+        
+        <div className="overflow-y-auto pr-1 -mr-1 custom-scrollbar">
+            <div className="flex flex-col items-center text-center">
+                <div className="h-28 w-28 rounded-full border-4 border-foreground bg-card shadow-[4px_4px_0px_rgba(0,0,0,1)] grid place-items-center text-6xl mb-4 relative animate-rise">
+                   {user.avatar}
+                   <div className="absolute -bottom-2 -right-2 bg-primary text-primary-foreground border-2 border-foreground rounded-full h-10 w-10 grid place-items-center shadow-sm">
+                      <Trophy className="h-5 w-5" />
+                   </div>
+                </div>
+                <h2 className="font-display text-4xl font-black">{user.name}</h2>
+                <div className="flex items-center gap-2 mt-2 opacity-70">
+                    <Mail className="h-3 w-3" />
+                    <span className="text-xs font-bold uppercase tracking-wider">{user.email}</span>
+                </div>
+                
+                <div className="flex items-center gap-2 mt-4">
+                    <div className="flex items-center gap-1 bg-orange-500 text-white px-4 py-1.5 rounded-full border-2 border-foreground shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all">
+                       <Flame className="h-5 w-5 fill-current" />
+                       <span className="font-display font-black">{user.streak} Day Streak</span>
+                    </div>
+                </div>
+                <p className="mt-6 text-base font-medium bg-accent/30 text-foreground px-6 py-3 rounded-2xl border-2 border-foreground/10 italic leading-relaxed">
+                   "{user.bio}"
+                </p>
+            </div>
+
+            <div className="mt-10 space-y-8 pb-4">
+                {/* Visual Stats Cards */}
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="chunky-card p-4 bg-primary/10 border-2 border-foreground flex flex-col items-center group hover:bg-primary/20 transition-colors">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Avg Daily</p>
+                      <p className="font-display text-2xl font-black text-primary">{avgUsage}m</p>
+                   </div>
+                   <div className="chunky-card p-4 bg-orange-50 border-2 border-foreground flex flex-col items-center group hover:bg-orange-100 transition-colors">
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Focus Score</p>
+                      <p className="font-display text-2xl font-black text-orange-600">88</p>
+                   </div>
+                </div>
+
+                {/* Deep Insights */}
+                <div className="space-y-4">
+                    <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                        <BrainCircuit className="h-4 w-4 text-primary" /> Digital Footprint
+                    </h3>
+                    <div className="grid grid-cols-1 gap-3">
+                        <div className="flex items-center justify-between p-4 rounded-2xl bg-card border-2 border-foreground shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-accent border-2 border-foreground">📱</div>
+                                <div>
+                                    <p className="text-[10px] font-black text-muted-foreground uppercase">Favorite App</p>
+                                    <p className="font-display font-bold">{topApp?.appName || "N/A"}</p>
+                                </div>
+                            </div>
+                            <p className="font-mono font-black text-primary">{topApp?.minutes || 0}m</p>
+                        </div>
+                        <div className="flex items-center justify-between p-4 rounded-2xl bg-card border-2 border-foreground shadow-[2px_2px_0px_rgba(0,0,0,1)]">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-primary/20 border-2 border-foreground">📅</div>
+                                <div>
+                                    <p className="text-[10px] font-black text-muted-foreground uppercase">Weekly Total</p>
+                                    <p className="font-display font-bold">Projected Usage</p>
+                                </div>
+                            </div>
+                            <p className="font-mono font-black text-orange-600">{weeklyTotal}m</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div>
+                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2 mb-4">
+                      <Trophy className="h-4 w-4 text-primary" /> Hall of Fame
+                   </h3>
+                   <div className="flex flex-wrap gap-2">
+                      {user.badges.map(b => (
+                         <span key={b} className="px-4 py-2 rounded-xl border-2 border-foreground bg-accent font-display font-bold text-sm shadow-[3px_3px_0px_rgba(0,0,0,1)] hover:translate-y-[-2px] transition-transform">
+                            {b}
+                         </span>
+                      ))}
+                   </div>
+                </div>
+
+                <div>
+                   <h3 className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2 mb-4">
+                      <BarChart3 className="h-4 w-4 text-primary" /> Screen Time Heatmap
+                   </h3>
+                   <div className="chunky-card p-5 bg-card border-2 border-foreground shadow-[4px_4px_0px_rgba(0,0,0,1)]">
+                      <div className="flex items-end justify-between h-32 gap-1.5">
+                         {user.analytics.slice().reverse().map((a, i) => {
+                            const height = Math.min((a.usageMinutes / 240) * 100, 100);
+                            const isOverLimit = a.usageMinutes > 120;
+                            return (
+                               <div key={i} className="flex-1 flex flex-col items-center gap-2 group relative">
+                                  <div 
+                                    className={cn(
+                                        "w-full rounded-t-xl transition-all border-b-0 border-x-2 border-t-2 border-foreground shadow-sm group-hover:scale-x-110",
+                                        isOverLimit ? "bg-destructive border-destructive" : "bg-primary"
+                                    )} 
+                                    style={{ height: `${height}%` }}
+                                  />
+                                  <span className="text-[10px] font-black text-muted-foreground uppercase">
+                                      {new Date(a.date).toLocaleDateString('en', { weekday: 'narrow' })}
+                                  </span>
+                                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-foreground text-background text-xs font-black px-2 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20 shadow-lg">
+                                      {a.usageMinutes} mins
+                                  </div>
+                               </div>
+                            );
+                         })}
+                      </div>
+                      <div className="mt-6 pt-6 border-t-2 border-dashed border-foreground/10 flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
+                         <div className="flex items-center gap-2">
+                            <div className="h-3 w-3 bg-primary rounded-full border-2 border-foreground" />
+                            <span>Safe Mode</span>
+                         </div>
+                         <div className="flex items-center gap-2">
+                            <div className="h-3 w-3 bg-destructive rounded-full border-2 border-foreground" />
+                            <span>Doom Scroll</span>
+                         </div>
+                      </div>
+                   </div>
+                </div>
+            </div>
+        </div>
+
+        <div className="mt-8 shrink-0">
+            <button 
+                onClick={onClose}
+                className="w-full h-16 bg-foreground text-background font-display font-black text-xl rounded-2xl border-4 border-foreground shadow-[8px_8px_0px_rgba(0,0,0,0.2)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all hover:bg-primary hover:text-primary-foreground"
+            >
+                Keep Grinding 🚀
+            </button>
+            <p className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-4">
+               Member Since {user.joinDate}
+            </p>
+        </div>
+      </div>
+
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: hsl(var(--foreground)/0.1); border-radius: 10px; }
+      `}</style>
+    </div>
+  );
+}

@@ -1,206 +1,159 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
-import { store } from "@/lib/mockStore";
+import { useNavigate } from "react-router-dom";
+import { store, User } from "@/lib/mockStore";
 import { useStore } from "@/hooks/useStore";
 import { PageHeader } from "@/components/screensplit/PageHeader";
 import { BottomNav } from "@/components/screensplit/BottomNav";
-import { Plus, LogOut, Users, Sparkles } from "lucide-react";
+import { UserPlus, Flame, Trophy, BarChart3, X, Search, Sparkles } from "lucide-react";
 import { toast } from "sonner";
-
-const EMOJIS = ["🍕", "🍣", "🌮", "🍜", "🍔", "☕", "🍺", "🥘"];
+import { cn } from "@/lib/utils";
+import { UserProfileOverlay } from "@/components/screensplit/UserProfileOverlay";
 
 export default function Groups() {
+
   const nav = useNavigate();
   const me = useStore(() => store.currentUser());
-  const groups = useStore(() => store.groupsForCurrentUser());
-  const [showCreate, setShowCreate] = useState(false);
-  const [showJoin, setShowJoin] = useState(false);
-  const [name, setName] = useState("");
-  const [emoji, setEmoji] = useState("🍕");
-  const [bill, setBill] = useState("2000");
-  const [code, setCode] = useState("");
+  const friends = useStore(() => store.friendsForCurrentUser());
+  const [selectedFriend, setSelectedFriend] = useState<User | null>(null);
+  const [showAdd, setShowAdd] = useState(false);
+  const [email, setEmail] = useState("");
 
   if (!me) {
     nav("/welcome", { replace: true });
     return null;
   }
 
-  const create = () => {
-    if (!name.trim()) return toast.error("Group needs a name");
-    const g = store.createGroup(name.trim(), emoji, Number(bill) || 2000);
-    setShowCreate(false);
-    setName("");
-    nav(`/group/${g.id}`);
-  };
-
-  const join = () => {
-    const g = store.joinGroup(code.trim());
-    if (!g) return toast.error("No group with that code");
-    setShowJoin(false);
-    setCode("");
-    nav(`/group/${g.id}`);
+  const addFriend = (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      store.addFriend(email);
+      toast.success("Friend added!");
+      setShowAdd(false);
+      setEmail("");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to add friend");
+    }
   };
 
   return (
     <div className="min-h-screen pb-28">
       <div className="mx-auto max-w-md px-5">
         <PageHeader
-          title={`Hey ${me.name.split(" ")[0]} ${me.avatar}`}
-          subtitle="Your crews"
+          title="Friends"
+          subtitle="Track your crew members"
           right={
             <button
-              onClick={() => { store.signOut(); nav("/welcome"); }}
-              aria-label="Sign out"
-              className="grid place-items-center h-9 w-9 rounded-full border-2 border-foreground bg-card hover:bg-accent"
+              onClick={() => setShowAdd(true)}
+              className="grid place-items-center h-9 w-9 rounded-full border-2 border-foreground bg-primary text-primary-foreground hover:bg-primary/90 shadow-[2px_2px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all"
             >
-              <LogOut className="h-4 w-4" />
+              <UserPlus className="h-4 w-4" />
             </button>
           }
         />
 
-        {/* Quick actions */}
-        <div className="grid grid-cols-2 gap-3">
-          <button
-            onClick={() => setShowCreate(true)}
-            className="chunky-card p-4 bg-accent text-left hover:-translate-y-0.5 transition-transform"
-          >
-            <Plus className="h-5 w-5 mb-2" strokeWidth={2.5} />
-            <p className="font-display font-bold">New crew</p>
-            <p className="text-[11px] text-muted-foreground">Start a split</p>
-          </button>
-          <button
-            onClick={() => setShowJoin(true)}
-            className="chunky-card p-4 bg-card text-left hover:-translate-y-0.5 transition-transform"
-          >
-            <Users className="h-5 w-5 mb-2" strokeWidth={2.5} />
-            <p className="font-display font-bold">Join with code</p>
-            <p className="text-[11px] text-muted-foreground">Got a link?</p>
-          </button>
-        </div>
+        <div className="mt-6 space-y-4">
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <input 
+                    placeholder="Search friends..." 
+                    className="w-full bg-card border-2 border-foreground rounded-xl pl-10 pr-4 py-2.5 font-display font-medium outline-none focus:ring-2 ring-primary/20 transition-all"
+                />
+            </div>
 
-        {/* Groups list */}
-        <div className="mt-6 space-y-3">
-          <h2 className="font-display text-xl font-bold">Crews</h2>
-          {groups.length === 0 && (
-            <div className="chunky-card p-6 bg-card text-center">
-              <Sparkles className="h-6 w-6 mx-auto mb-2" />
-              <p className="font-display font-bold">No crews yet</p>
-              <p className="text-sm text-muted-foreground">
-                Spin up your first split — we'll seed it with 3 demo friends.
+          {friends.length === 0 ? (
+            <div className="chunky-card p-8 bg-card text-center border-2 border-dashed border-foreground/20 mt-4">
+              <Sparkles className="h-8 w-8 mx-auto mb-3 text-primary" />
+              <p className="font-display font-bold text-lg">No friends yet</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Add friends by email to track their screen time performance!
               </p>
+              <button 
+                onClick={() => setShowAdd(true)}
+                className="mt-6 px-6 py-2 bg-foreground text-background font-display font-bold rounded-full hover:opacity-90"
+              >
+                Find Friends
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-3">
+              {friends.map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setSelectedFriend(f)}
+                  className="chunky-card p-4 bg-card hover:-translate-y-1 transition-all border-2 border-foreground flex items-center gap-4 text-left active:scale-[0.98]"
+                >
+                  <div className="h-14 w-14 rounded-full border-2 border-foreground bg-accent grid place-items-center text-3xl shrink-0">
+                    {f.avatar}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display font-bold text-lg leading-tight truncate">{f.name}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      {f.streak > 0 && (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full bg-orange-100 text-orange-600 border border-orange-200">
+                          <Flame className="h-3 w-3 fill-current" /> {f.streak} Day Streak
+                        </span>
+                      )}
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        {f.badges.length} Badges
+                      </span>
+                    </div>
+                  </div>
+                  <div className="h-8 w-8 rounded-full border-2 border-foreground flex items-center justify-center opacity-20 group-hover:opacity-100 italic font-black text-xs">
+                    i
+                  </div>
+                </button>
+              ))}
             </div>
           )}
-          {groups.map((g) => {
-            const ranked = store.rankedFor(g);
-            const me2 = ranked.find((r) => r.userId === me.id);
-            return (
-              <Link
-                key={g.id}
-                to={`/group/${g.id}`}
-                className="block chunky-card p-4 bg-card hover:-translate-y-0.5 transition-transform"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">{g.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-display font-bold truncate">{g.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {g.memberIds.length} members · ₹{g.bill.toLocaleString("en-IN")}
-                    </p>
-                  </div>
-                  {me2 && (
-                    <div className="text-right">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">You owe</p>
-                      <p className="font-display font-bold text-lg leading-none">₹{me2.share}</p>
-                    </div>
-                  )}
-                </div>
-              </Link>
-            );
-          })}
         </div>
       </div>
 
-      {/* Sheets */}
-      {showCreate && (
-        <Sheet onClose={() => setShowCreate(false)} title="New crew">
-          <div className="space-y-3">
-            <Field label="Crew name">
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday Night" className="ssp-input" />
-            </Field>
-            <Field label="Vibe">
-              <div className="grid grid-cols-8 gap-1">
-                {EMOJIS.map((e) => (
-                  <button
-                    key={e}
-                    onClick={() => setEmoji(e)}
-                    className={`text-xl p-1.5 rounded-lg ${emoji === e ? "bg-accent" : "bg-muted"}`}
-                  >{e}</button>
-                ))}
+      {showAdd && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-6" onClick={() => setShowAdd(false)}>
+          <div className="absolute inset-0 bg-foreground/60 backdrop-blur-sm" />
+          <div
+            className="relative w-full max-w-sm bg-background border-4 border-foreground rounded-[2rem] p-6 animate-scale shadow-[8px_8px_0px_rgba(0,0,0,1)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="font-display text-2xl font-black mb-4">Add Friend</h2>
+            <form onSubmit={addFriend} className="space-y-4">
+              <div>
+                <label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Friend's Email</label>
+                <input 
+                    autoFocus
+                    value={email}
+                    onChange={e => setEmail(e.target.value)}
+                    placeholder="example@gmail.com" 
+                    className="w-full mt-1.5 bg-muted border-2 border-foreground rounded-xl px-4 py-3 font-display font-bold outline-none focus:border-primary transition-all"
+                />
               </div>
-            </Field>
-            <Field label="Bill (₹)">
-              <input value={bill} onChange={(e) => setBill(e.target.value)} type="number" className="ssp-input" />
-            </Field>
-            <button onClick={create} className="ssp-btn">Create crew</button>
+              <button 
+                type="submit"
+                className="w-full h-12 bg-primary text-primary-foreground font-display font-black rounded-xl border-2 border-foreground shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none"
+              >
+                Add Friend
+              </button>
+              <button 
+                type="button"
+                onClick={() => setShowAdd(false)}
+                className="w-full text-sm font-bold text-muted-foreground underline"
+              >
+                Cancel
+              </button>
+            </form>
           </div>
-        </Sheet>
+        </div>
       )}
 
-      {showJoin && (
-        <Sheet onClose={() => setShowJoin(false)} title="Join with code">
-          <div className="space-y-3">
-            <Field label="Invite code">
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value.toUpperCase())}
-                placeholder="ABC123"
-                className="ssp-input font-mono tracking-widest text-center text-lg"
-              />
-            </Field>
-            <button onClick={join} className="ssp-btn">Join crew</button>
-            <p className="text-[11px] text-center text-muted-foreground">
-              Or paste a <code>/join/CODE</code> link in your browser.
-            </p>
-          </div>
-        </Sheet>
+      {selectedFriend && (
+        <UserProfileOverlay 
+          user={selectedFriend} 
+          onClose={() => setSelectedFriend(null)} 
+        />
       )}
+
 
       <BottomNav />
-
-      {/* Local utility classes via tailwind */}
-      <style>{`
-        .ssp-input { width:100%; background:hsl(var(--muted)); border-radius:0.75rem; padding:0.625rem 0.75rem; font-size:0.875rem; border:2px solid transparent; outline:none; }
-        .ssp-input:focus { border-color:hsl(var(--foreground)); }
-        .ssp-btn { width:100%; background:hsl(var(--primary)); color:hsl(var(--primary-foreground)); font-family:'Space Grotesk',sans-serif; font-weight:700; padding:0.75rem; border-radius:0.875rem; border:2px solid hsl(var(--foreground)); box-shadow:var(--shadow-chunky); transition:transform .1s; }
-        .ssp-btn:hover { transform:translate(2px,2px); box-shadow:none; }
-      `}</style>
-    </div>
-  );
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-        {label}
-      </label>
-      <div className="mt-1">{children}</div>
-    </div>
-  );
-}
-
-function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-foreground/40" />
-      <div
-        className="relative w-full max-w-md bg-background border-t-2 border-foreground rounded-t-[var(--radius)] p-5 pb-8 animate-rise"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mx-auto h-1 w-10 rounded-full bg-foreground/30 mb-3" />
-        <h2 className="font-display text-2xl font-bold mb-4">{title}</h2>
-        {children}
-      </div>
     </div>
   );
 }

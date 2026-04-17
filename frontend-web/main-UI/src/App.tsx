@@ -11,6 +11,8 @@ import GroupDetail from "./pages/GroupDetail.tsx";
 import Join from "./pages/Join.tsx";
 import Me from "./pages/Me.tsx";
 import LeaderboardPage from "./pages/LeaderboardPage.tsx";
+import Explore from "./pages/Explore.tsx";
+
 
 const queryClient = new QueryClient();
 
@@ -24,7 +26,9 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/welcome" element={<Welcome />} />
           <Route path="/groups" element={<Groups />} />
+          <Route path="/explore" element={<Explore />} />
           <Route path="/group/:id" element={<GroupDetail />} />
+
           <Route path="/join/:code" element={<Join />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/me" element={<Me />} />

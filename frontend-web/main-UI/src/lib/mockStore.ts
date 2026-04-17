@@ -9,6 +9,12 @@ export interface User {
   name: string;
   email: string;
   avatar: string; // emoji
+  streak: number;
+  badges: string[];
+  analytics: { date: string; usageMinutes: number }[];
+  friendIds: string[];
+  bio: string;
+  joinDate: string;
 }
 
 export interface Group {
@@ -120,8 +126,19 @@ export const store = {
         name,
         email,
         avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)],
+        streak: Math.floor(Math.random() * 10),
+        badges: ["Newbie"],
+        analytics: Array.from({ length: 7 }).map((_, i) => ({
+          date: new Date(Date.now() - i * 86400000).toISOString().split("T")[0],
+          usageMinutes: Math.floor(Math.random() * 180),
+        })),
+        friendIds: ["u_rahul_demo", "u_priya_demo"],
+        bio: "Exploring the digital world, one minute at a time.",
+        joinDate: new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' }),
       };
+      // Ensure these users exist in storage too
       users.push(user);
+
       write(KEY_USERS, users);
       // seed usage
       const allUsage = read<Usage[]>(KEY_USAGE, []);
@@ -162,18 +179,73 @@ export const store = {
     const me = this.currentUser();
     if (!me) throw new Error("not signed in");
     const groups = read<Group[]>(KEY_GROUPS, []);
-    // Seed with 3 friends so the leaderboard isn't empty
     const friends: User[] = [
-      { id: uid("u"), name: "Rahul", email: "rahul@demo.app", avatar: "🐼" },
-      { id: uid("u"), name: "Priya", email: "priya@demo.app", avatar: "🦄" },
-      { id: uid("u"), name: "Arjun", email: "arjun@demo.app", avatar: "🐯" },
+      { 
+        id: uid("u"), 
+        name: "Rahul", 
+        email: "rahul@demo.app", 
+        avatar: "🐼", 
+        streak: 5, 
+        badges: ["Consistent", "Early Bird"],
+        analytics: Array.from({ length: 7 }).map((_, i) => ({
+          date: new Date(Date.now() - i * 86400000).toISOString().split("T")[0],
+          usageMinutes: Math.floor(Math.random() * 120),
+        })),
+        friendIds: [],
+        bio: "Trying to stay away from the scroll! 🧘‍♂️",
+        joinDate: "January 2026",
+      },
+      { 
+        id: uid("u"), 
+        name: "Priya", 
+        email: "priya@demo.app", 
+        avatar: "🦄", 
+        streak: 12, 
+        badges: ["Legend", "Phone Free"],
+        analytics: Array.from({ length: 7 }).map((_, i) => ({
+          date: new Date(Date.now() - i * 86400000).toISOString().split("T")[0],
+          usageMinutes: Math.floor(Math.random() * 90),
+        })),
+        friendIds: [],
+        bio: "Less screen, more life. ✨",
+        joinDate: "December 2025",
+      },
+      { 
+        id: uid("u"), 
+        name: "Arjun", 
+        email: "arjun@demo.app", 
+        avatar: "🐯", 
+        streak: 1, 
+        badges: ["Starter"],
+        analytics: Array.from({ length: 7 }).map((_, i) => ({
+          date: new Date(Date.now() - i * 86400000).toISOString().split("T")[0],
+          usageMinutes: Math.floor(Math.random() * 240),
+        })),
+        friendIds: [],
+        bio: "I just love reels and I can't stop. Help! 🤡",
+        joinDate: "February 2026",
+      },
     ];
+
     const allUsers = read<User[]>(KEY_USERS, []);
     friends.forEach((f) => allUsers.push(f));
     write(KEY_USERS, allUsers);
     const allUsage = read<Usage[]>(KEY_USAGE, []);
     friends.forEach((f) => allUsage.push(seedUsage(f.id)));
     write(KEY_USAGE, allUsage);
+
+    // Auto-add these friends to user's friend list
+    const meIdx = allUsers.findIndex(u => u.id === me.id);
+    if (meIdx !== -1) {
+      if (!allUsers[meIdx].friendIds) allUsers[meIdx].friendIds = [];
+      friends.forEach(f => {
+        if (!allUsers[meIdx].friendIds.includes(f.id)) {
+          allUsers[meIdx].friendIds.push(f.id);
+        }
+      });
+      write(KEY_USERS, allUsers);
+      write(KEY_USER, allUsers[meIdx]);
+    }
 
     const group: Group = {
       id: uid("g"),
@@ -274,6 +346,34 @@ export const store = {
   vouchHostage(groupId: string, userId: string) {
     this.updateGroup(groupId, { vouchedHostage: userId });
   },
+
+  addFriend(email: string) {
+    const me = this.currentUser();
+    if (!me) return;
+    const users = read<User[]>(KEY_USERS, []);
+    const friend = users.find(u => u.email.toLowerCase() === email.toLowerCase());
+    if (!friend) throw new Error("User not found");
+    if (friend.id === me.id) throw new Error("Can't add yourself");
+    
+    const meIdx = users.findIndex(u => u.id === me.id);
+    if (!users[meIdx].friendIds) users[meIdx].friendIds = [];
+    if (users[meIdx].friendIds.includes(friend.id)) return;
+    
+    users[meIdx].friendIds.push(friend.id);
+    write(KEY_USERS, users);
+    
+    // Update current user cache
+    write(KEY_USER, users[meIdx]);
+    emit();
+  },
+  
+  friendsForCurrentUser(): User[] {
+    const me = this.currentUser();
+    if (!me) return [];
+    const users = read<User[]>(KEY_USERS, []);
+    const friendIds = me.friendIds || [];
+    return users.filter(u => friendIds.includes(u.id));
+  }
 };
 
 // Optional dev seeding: ensure storage is reachable.
