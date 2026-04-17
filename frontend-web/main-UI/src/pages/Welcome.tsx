@@ -1,27 +1,97 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { ClientResponseError } from "pocketbase";
 import { store } from "@/lib/mockStore";
+import { pb } from "@/lib/pocketbase";
 import { cn } from "@/lib/utils";
 import { Smartphone, Trophy, Lock } from "lucide-react";
+
+function pocketBaseErrorMessage(err: unknown): string {
+  if (err instanceof ClientResponseError) {
+    const data = err.response?.data as
+      | { message?: string; data?: Record<string, unknown> }
+      | undefined;
+    if (typeof data?.message === "string" && data.message) return data.message;
+    const fieldErr = data?.data;
+    if (fieldErr && typeof fieldErr === "object") {
+      const first = Object.values(fieldErr)[0];
+      if (
+        first &&
+        typeof first === "object" &&
+        "message" in first &&
+        typeof (first as { message: unknown }).message === "string"
+      ) {
+        return (first as { message: string }).message;
+      }
+    }
+    return err.message || "Request failed";
+  }
+  return err instanceof Error ? err.message : "Something went wrong";
+}
 
 export default function Welcome() {
   const nav = useNavigate();
   const [loading, setLoading] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [authMode, setAuthMode] = useState<"SIGN_IN" | "SIGN_UP">("SIGN_UP");
 
+  const syncPbAuthToStore = (fallbackName: string) => {
+    const r = pb.authStore.record;
+    if (!r) throw new Error("Missing auth record");
+    const rec = r as { id: string; email?: string; name?: string };
+    store.signInWithPocketBase({
+      id: rec.id,
+      name: (rec.name?.trim() || fallbackName).trim() || "You",
+      email: String(rec.email ?? ""),
+    });
+  };
 
-  const signIn = () => {
+  const submitEmailAuth = async () => {
+    setAuthError("");
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail || !password) {
+      setAuthError("Email and password are required.");
+      return;
+    }
     setLoading(true);
-    setTimeout(() => {
-      store.signInWithGoogle({
-        name: name || "You",
-        email: email || `you+${Date.now()}@gmail.com`,
-      });
+    try {
+      if (authMode === "SIGN_UP") {
+        const displayName = name.trim() || trimmedEmail.split("@")[0] || "You";
+        await pb.collection("users").create({
+          email: trimmedEmail,
+          password,
+          passwordConfirm: password,
+          name: displayName,
+        });
+      }
+      await pb.collection("users").authWithPassword(trimmedEmail, password);
+      syncPbAuthToStore(name.trim() || trimmedEmail.split("@")[0] || "You");
       nav("/groups", { replace: true });
-    }, 600);
+    } catch (err) {
+      setAuthError(pocketBaseErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const continueWithGoogle = async () => {
+    setAuthError("");
+    setLoading(true);
+    try {
+      await pb.collection("users").authWithOAuth2({ provider: "google" });
+      syncPbAuthToStore("You");
+      nav("/groups", { replace: true });
+    } catch (err) {
+      if (!String(err).toLowerCase().includes("cancel")) {
+        setAuthError(pocketBaseErrorMessage(err));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -65,7 +135,7 @@ export default function Welcome() {
             <div className="chunky-card p-6 bg-card border-4 border-foreground animate-rise">
               <div className="flex bg-muted p-1 rounded-xl mb-6 border-2 border-foreground">
                 <button 
-                  onClick={() => setAuthMode("SIGN_UP")}
+                  onClick={() => { setAuthMode("SIGN_UP"); setAuthError(""); }}
                   className={cn(
                     "flex-1 py-1.5 text-xs font-black uppercase tracking-wider rounded-lg transition-all",
                     authMode === "SIGN_UP" ? "bg-foreground text-background" : "text-muted-foreground"
@@ -74,7 +144,7 @@ export default function Welcome() {
                   Join
                 </button>
                 <button 
-                  onClick={() => setAuthMode("SIGN_IN")}
+                  onClick={() => { setAuthMode("SIGN_IN"); setAuthError(""); }}
                   className={cn(
                     "flex-1 py-1.5 text-xs font-black uppercase tracking-wider rounded-lg transition-all",
                     authMode === "SIGN_IN" ? "bg-foreground text-background" : "text-muted-foreground"
@@ -106,15 +176,22 @@ export default function Welcome() {
                   />
                 </div>
                 <div className="animate-scale">
-                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Secret Key</label>
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Password</label>
                   <input
                     type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
+                    autoComplete={authMode === "SIGN_UP" ? "new-password" : "current-password"}
                     className="mt-1.5 w-full bg-muted rounded-xl px-4 py-3.5 font-display font-bold border-2 border-foreground outline-none focus:ring-4 ring-primary/20"
                   />
                 </div>
+                {authError ? (
+                  <p className="text-sm font-bold text-destructive">{authError}</p>
+                ) : null}
                 <button
-                  onClick={signIn}
+                  type="button"
+                  onClick={submitEmailAuth}
                   disabled={loading}
                   className="w-full h-14 bg-primary text-primary-foreground font-display font-black text-lg py-3 rounded-2xl border-4 border-foreground shadow-[6px_6px_0px_rgba(0,0,0,1)] hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-[4px_4px_0px_rgba(0,0,0,1)] active:translate-x-1.5 active:translate-y-1.5 active:shadow-none transition-all disabled:opacity-60 mt-2"
                 >
@@ -127,8 +204,10 @@ export default function Welcome() {
                 </div>
 
                 <button
-                  onClick={signIn}
-                  className="w-full bg-card hover:bg-muted text-foreground font-display font-bold py-3 px-4 rounded-xl border-2 border-foreground flex items-center justify-center gap-3 transition-colors"
+                  type="button"
+                  onClick={continueWithGoogle}
+                  disabled={loading}
+                  className="w-full bg-card hover:bg-muted text-foreground font-display font-bold py-3 px-4 rounded-xl border-2 border-foreground flex items-center justify-center gap-3 transition-colors disabled:opacity-60"
                 >
                   <GoogleMark />
                   <span className="text-sm">Continue with Google</span>

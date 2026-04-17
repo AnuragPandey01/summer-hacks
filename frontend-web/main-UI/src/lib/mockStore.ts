@@ -3,6 +3,7 @@
 
 import type { AppUsage, Category, MemberUsage, Usage } from "./rank";
 import { rankGroup } from "./rank";
+import { pb } from "./pocketbase";
 
 
 export interface User {
@@ -156,7 +157,56 @@ export const store = {
     emit();
     return user;
   },
+  /** Sync PocketBase auth record into local demo state (groups, usage, etc.). */
+  signInWithPocketBase(opts: { id: string; name: string; email: string }): User {
+    const users = read<User[]>(KEY_USERS, []);
+    const email = opts.email.trim().toLowerCase();
+    let user = users.find(
+      (u) => u.id === opts.id || u.email.toLowerCase() === email,
+    );
+    if (!user) {
+      user = {
+        id: opts.id,
+        name: opts.name.trim() || "You",
+        email: opts.email.trim(),
+        avatar: AVATARS[Math.floor(Math.random() * AVATARS.length)],
+        streak: Math.floor(Math.random() * 10),
+        badges: ["Newbie"],
+        analytics: Array.from({ length: 7 }).map((_, i) => ({
+          date: new Date(Date.now() - i * 86400000).toISOString().split("T")[0],
+          usageMinutes: Math.floor(Math.random() * 180),
+        })),
+        friendIds: ["u_rahul_demo", "u_priya_demo"],
+        bio: "Exploring the digital world, one minute at a time.",
+        joinDate: new Date().toLocaleDateString("en-US", {
+          month: "long",
+          year: "numeric",
+        }),
+      };
+      users.push(user);
+      write(KEY_USERS, users);
+      const allUsage = read<Usage[]>(KEY_USAGE, []);
+      allUsage.push(seedUsage(user.id));
+      write(KEY_USAGE, allUsage);
+    } else {
+      user = {
+        ...user,
+        id: opts.id,
+        name: opts.name.trim() || user.name,
+        email: opts.email.trim(),
+      };
+      const idx = users.findIndex(
+        (u) => u.email.toLowerCase() === email || u.id === opts.id,
+      );
+      if (idx !== -1) users[idx] = user;
+      write(KEY_USERS, users);
+    }
+    write(KEY_USER, user);
+    emit();
+    return user;
+  },
   signOut() {
+    pb.authStore.clear();
     localStorage.removeItem(KEY_USER);
     emit();
   },
