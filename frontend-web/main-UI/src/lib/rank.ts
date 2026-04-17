@@ -1,6 +1,8 @@
 // Pure helpers for ScreenSplit ranking + bill multipliers.
 // No React, no storage — easy to unit-test and swap behind a server later.
 
+import { Usage } from "./mockStore";
+
 export type Category = "social" | "stream" | "neutral" | "productive";
 
 export const CATEGORY_META: Record<
@@ -26,17 +28,22 @@ export interface MemberUsage {
   redemptionMultiplier?: number;
 }
 
-export function weightedMinutes(usage: MemberUsage): number {
+export function weightedMinutes(usage?: MemberUsage | Usage): number {
+  if (!usage) return 0;
   const raw = usage.apps.reduce(
     (sum, a) => sum + a.minutes * CATEGORY_META[a.category].weight,
     0,
   );
-  return raw * (usage.redemptionMultiplier ?? 1);
+  const mult = (usage as MemberUsage).redemptionMultiplier ?? 1;
+  return raw * mult;
 }
 
-export function rawMinutes(usage: MemberUsage): number {
+
+export function rawMinutes(usage?: MemberUsage | Usage): number {
+  if (!usage) return 0;
   return usage.apps.reduce((s, a) => s + a.minutes, 0);
 }
+
 
 /**
  * Distribute multipliers between 0.5x and 1.5x such that the sum equals n.

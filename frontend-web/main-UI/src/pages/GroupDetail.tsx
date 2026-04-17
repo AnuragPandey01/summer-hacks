@@ -4,11 +4,11 @@ import { store } from "@/lib/mockStore";
 import { useStore } from "@/hooks/useStore";
 import { PageHeader } from "@/components/screensplit/PageHeader";
 import { BottomNav } from "@/components/screensplit/BottomNav";
-import { Leaderboard } from "@/components/screensplit/Leaderboard";
+import { BillSplitList } from "@/components/screensplit/BillSplitList";
+import { MemberBreakdown } from "@/components/screensplit/MemberBreakdown";
 import { BillBreakdown } from "@/components/screensplit/BillBreakdown";
 import { RedemptionPanel } from "@/components/screensplit/RedemptionPanel";
-import { AppCategoryBar } from "@/components/screensplit/AppCategoryBar";
-import { Share2, Pencil, Check, Zap } from "lucide-react";
+import { Share2, Pencil, Check } from "lucide-react";
 import { toast } from "sonner";
 
 export default function GroupDetail() {
@@ -31,7 +31,9 @@ export default function GroupDetail() {
     );
   }
 
-  const myUsage = store.usageFor(me.id);
+  const [selectedMemberId, setSelectedMemberId] = useState(me.id);
+  const ranked = store.rankedFor(group);
+  const currentRankData = ranked.find(r => r.userId === selectedMemberId);
   const inviteUrl = `${window.location.origin}/join/${group.inviteCode}`;
 
   const share = async () => {
@@ -62,22 +64,6 @@ export default function GroupDetail() {
     toast("Bill updated");
   };
 
-  const onPokeJailed = (uid: string) => {
-    const u = store.getUser(uid);
-    toast(`💀 Roast sent to ${u?.name}`, {
-      description: '"put the phone down 💀"',
-      icon: <Zap className="h-4 w-4" />,
-    });
-  };
-
-  const onVouch = (uid: string) => {
-    store.vouchHostage(group.id, uid);
-    const u = store.getUser(uid);
-    toast(`You vouched for ${u?.name}`, {
-      description: "Their bill hostage is lifted. Costs you 0.2× score.",
-    });
-  };
-
   return (
     <div className="min-h-screen pb-28">
       <div className="mx-auto max-w-md px-5">
@@ -96,8 +82,8 @@ export default function GroupDetail() {
           }
         />
 
-        {/* Bill */}
-        <div className="relative">
+        {/* Bill Summary */}
+        <div className="relative mt-2">
           <BillBreakdown group={group} />
           <button
             onClick={() => { setBillDraft(String(group.bill)); setEditingBill(true); }}
@@ -127,7 +113,7 @@ export default function GroupDetail() {
           </div>
         )}
 
-        {/* Invite via Gmail */}
+        {/* Invite Hub */}
         <div className="mt-4 chunky-card p-4 bg-card">
           <div className="flex items-center gap-3">
             <div className="text-2xl">✉️</div>
@@ -144,25 +130,31 @@ export default function GroupDetail() {
           </div>
         </div>
 
-        {/* Leaderboard */}
-        <section className="mt-6">
-          <div className="flex items-baseline justify-between mb-3">
-            <h2 className="font-display text-xl font-bold">Leaderboard</h2>
-            <p className="text-xs text-muted-foreground">Lowest screen time wins</p>
+        {/* Bill Split List */}
+        <section className="mt-8">
+          <div className="flex items-baseline justify-between mb-3 px-1">
+            <h2 className="font-display text-xl font-black uppercase tracking-tight">Bill Split</h2>
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mr-1">Recalculates live</p>
           </div>
-          <Leaderboard group={group} meId={me.id} onPokeJailed={onPokeJailed} onVouch={onVouch} />
+          <BillSplitList 
+            group={group} 
+            selectedId={selectedMemberId} 
+            onSelect={setSelectedMemberId} 
+          />
         </section>
 
-        {/* My breakdown */}
-        {myUsage && (
-          <section className="mt-6 chunky-card p-4 bg-card">
-            <h2 className="font-display text-xl font-bold mb-3">Your week</h2>
-            <AppCategoryBar apps={myUsage.apps} />
+        {/* Member Breakdown */}
+        {currentRankData && (
+          <section className="mt-8">
+            <MemberBreakdown 
+              userId={selectedMemberId} 
+              rankData={currentRankData} 
+            />
           </section>
         )}
 
         {/* Redemption */}
-        <section className="mt-6">
+        <section className="mt-8">
           <RedemptionPanel group={group} meId={me.id} />
         </section>
       </div>

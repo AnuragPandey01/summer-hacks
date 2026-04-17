@@ -5,6 +5,8 @@ import { PageHeader } from "@/components/screensplit/PageHeader";
 import { BottomNav } from "@/components/screensplit/BottomNav";
 import { Leaderboard } from "@/components/screensplit/Leaderboard";
 import { AppCategoryBar } from "@/components/screensplit/AppCategoryBar";
+import { ScarletScoreCard } from "@/components/screensplit/ScarletScoreCard";
+import { weightedMinutes } from "@/lib/rank";
 import { TrendingUp, Zap } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,7 +20,15 @@ export default function SocialRank() {
     return null;
   }
 
+  // Calculate highest payer (highest weighted score)
+  const highestPayerId = [...socialGroup.memberIds].sort((a, b) => {
+    return weightedMinutes(store.usageFor(b)) - weightedMinutes(store.usageFor(a));
+  })[0];
+
+
+
   const myUsage = store.usageFor(me.id);
+
 
   const onPokeJailed = (uid: string) => {
     const u = store.getUser(uid);
@@ -83,12 +93,20 @@ export default function SocialRank() {
           />
         </section>
 
+        {/* Scarlet Score Section */}
+        {socialGroup.memberIds.length > 0 && (
+          <section className="mt-8 mb-6">
+            <ScarletScoreCard userId={highestPayerId} />
+          </section>
+        )}
+
         {/* Tips / Creativity part */}
-        <section className="mt-8 chunky-card p-4 bg-accent/20 border-2 border-dashed border-foreground/30 text-center">
+        <section className="mt-8 chunky-card p-4 bg-accent/20 border-2 border-dashed border-foreground/30 text-center opacity-60">
             <p className="font-display font-medium text-sm italic">
                 "Digital wellness is better with friends. Keep the streaks alive! 🧘‍♂️"
             </p>
         </section>
+
       </div>
       <BottomNav />
     </div>
