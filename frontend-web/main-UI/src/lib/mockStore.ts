@@ -3,8 +3,6 @@
 
 import type { AppUsage, Category, MemberUsage, Usage } from "./rank";
 import { rankGroup } from "./rank";
-import { pb } from "./pocketbase";
-
 
 export interface User {
   id: string;
@@ -205,8 +203,8 @@ export const store = {
     emit();
     return user;
   },
+  /** Clears local app session. Call `pb.authStore.clear()` when using PocketBase (see Me page). */
   signOut() {
-    pb.authStore.clear();
     localStorage.removeItem(KEY_USER);
     emit();
   },

@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { store } from "@/lib/mockStore";
+import { pb } from "@/lib/pocketbase";
 import { useStore } from "@/hooks/useStore";
 import { PageHeader } from "@/components/screensplit/PageHeader";
 import { BottomNav } from "@/components/screensplit/BottomNav";
@@ -26,7 +27,11 @@ export default function Me() {
           subtitle={me.email}
           right={
             <button
-              onClick={() => { store.signOut(); nav("/welcome"); }}
+              onClick={() => {
+                pb.authStore.clear();
+                store.signOut();
+                nav("/welcome", { replace: true });
+              }}
               aria-label="Sign out"
               className="grid place-items-center h-9 w-9 rounded-full border-2 border-foreground bg-card"
             >
