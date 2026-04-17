@@ -1,13 +1,28 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { ClientResponseError } from "pocketbase";
 import { store } from "@/lib/mockStore";
 import { useStore } from "@/hooks/useStore";
 import { PageHeader } from "@/components/screensplit/PageHeader";
 import { BottomNav } from "@/components/screensplit/BottomNav";
 import { Plus, Users, Sparkles } from "lucide-react";
 import { toast } from "sonner";
+import {
+  createCrewOnServer,
+  joinCrewByCode,
+  refreshMyCrewsInStore,
+} from "@/lib/crewsApi";
 
 const EMOJIS = ["🍕", "🍣", "🌮", "🍜", "🍔", "☕", "🍺", "🥘"];
+
+function pocketBaseErrorMessage(err: unknown): string {
+  if (err instanceof ClientResponseError) {
+    const data = err.response as { message?: string } | undefined;
+    if (typeof data?.message === "string" && data.message) return data.message;
+    return err.message || "Request failed";
+  }
+  return err instanceof Error ? err.message : "Something went wrong";
+}
 
 export default function Explore() {
   const nav = useNavigate();
@@ -19,27 +34,64 @@ export default function Explore() {
   const [emoji, setEmoji] = useState("🍕");
   const [bill, setBill] = useState("2000");
   const [code, setCode] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const loadCrews = useCallback(async () => {
+    if (!me) {
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    try {
+      await refreshMyCrewsInStore(me.id);
+    } catch (err) {
+      toast.error(pocketBaseErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [me]);
+
+  useEffect(() => {
+    void loadCrews();
+  }, [loadCrews]);
 
   if (!me) {
     nav("/welcome", { replace: true });
     return null;
   }
 
-  const create = () => {
+  const create = async () => {
     if (!name.trim()) return toast.error("Group needs a name");
-    const g = store.createGroup(name.trim(), emoji, Number(bill) || 2000);
-    setShowCreate(false);
-    setName("");
-    toast.success(`Crew "${g.name}" created!`);
+    setSaving(true);
+    try {
+      const g = await createCrewOnServer(me.id, {
+        name: name.trim(),
+        emoji,
+        bill: Number(bill) || 2000,
+      });
+      setShowCreate(false);
+      setName("");
+      toast.success(`Crew "${g.name}" created!`);
+    } catch (err) {
+      toast.error(pocketBaseErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
-
-  const join = () => {
-    const g = store.joinGroup(code.trim());
-    if (!g) return toast.error("No group with that code");
-    setShowJoin(false);
-    setCode("");
-    nav(`/group/${g.id}`);
+  const join = async () => {
+    setSaving(true);
+    try {
+      const { crew: g } = await joinCrewByCode(me.id, code.trim());
+      setShowJoin(false);
+      setCode("");
+      nav(`/group/${g.id}`);
+    } catch (err) {
+      toast.error(pocketBaseErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -78,7 +130,13 @@ export default function Explore() {
         {/* Groups list moved from Groups */}
         <div className="mt-8 space-y-3">
           <h2 className="font-display text-xl font-bold">Your Crews</h2>
-          {groups.length === 0 && (
+          {loading ? (
+            <div className="chunky-card p-6 bg-card text-center border-2 border-foreground/20">
+              <p className="font-display font-bold text-muted-foreground">
+                Loading…
+              </p>
+            </div>
+          ) : groups.length === 0 ? (
             <div className="chunky-card p-6 bg-card text-center border-2 border-dashed border-foreground/20">
               <Sparkles className="h-6 w-6 mx-auto mb-2 text-primary" />
               <p className="font-display font-bold">No crews yet</p>
@@ -86,34 +144,40 @@ export default function Explore() {
                 Found a new team of non-scrollers above!
               </p>
             </div>
-          )}
-          {groups.map((g) => {
-            const ranked = store.rankedFor(g);
-            const me2 = ranked.find((r) => r.userId === me.id);
-            return (
-              <Link
-                key={g.id}
-                to={`/group/${g.id}`}
-                className="block chunky-card p-4 bg-card hover:-translate-y-0.5 transition-transform border-2 border-foreground"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-3xl">{g.emoji}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-display font-bold truncate">{g.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {g.memberIds.length} members · ₹{g.bill.toLocaleString("en-IN")}
-                    </p>
-                  </div>
-                  {me2 && (
-                    <div className="text-right">
-                      <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Owe</p>
-                      <p className="font-display font-bold text-lg leading-none text-primary">₹{me2.share}</p>
+          ) : (
+            groups.map((g) => {
+              const ranked = store.rankedFor(g);
+              const me2 = ranked.find((r) => r.userId === me.id);
+              return (
+                <Link
+                  key={g.id}
+                  to={`/group/${g.id}`}
+                  className="block chunky-card p-4 bg-card hover:-translate-y-0.5 transition-transform border-2 border-foreground"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl">{g.emoji}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-display font-bold truncate">{g.name}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {g.memberIds.length} members · ₹
+                        {g.bill.toLocaleString("en-IN")}
+                      </p>
                     </div>
-                  )}
-                </div>
-              </Link>
-            );
-          })}
+                    {me2 && (
+                      <div className="text-right">
+                        <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Owe
+                        </p>
+                        <p className="font-display font-bold text-lg leading-none text-primary">
+                          ₹{me2.share}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+              );
+            })
+          )}
         </div>
       </div>
 
@@ -122,23 +186,43 @@ export default function Explore() {
         <Sheet onClose={() => setShowCreate(false)} title="New crew">
           <div className="space-y-4">
             <Field label="Crew name">
-              <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Friday Night" className="ssp-input" />
+              <input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Friday Night"
+                className="ssp-input"
+              />
             </Field>
             <Field label="Vibe">
               <div className="grid grid-cols-8 gap-1">
                 {EMOJIS.map((e) => (
                   <button
                     key={e}
+                    type="button"
                     onClick={() => setEmoji(e)}
                     className={`text-xl p-1.5 rounded-lg border-2 transition-all ${emoji === e ? "bg-accent border-foreground" : "bg-muted border-transparent"}`}
-                  >{e}</button>
+                  >
+                    {e}
+                  </button>
                 ))}
               </div>
             </Field>
             <Field label="Bill (₹)">
-              <input value={bill} onChange={(e) => setBill(e.target.value)} type="number" className="ssp-input" />
+              <input
+                value={bill}
+                onChange={(e) => setBill(e.target.value)}
+                type="number"
+                className="ssp-input"
+              />
             </Field>
-            <button onClick={create} className="ssp-btn mt-2">Create crew</button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void create()}
+              className="ssp-btn mt-2"
+            >
+              {saving ? "Creating…" : "Create crew"}
+            </button>
           </div>
         </Sheet>
       )}
@@ -154,7 +238,14 @@ export default function Explore() {
                 className="ssp-input font-mono tracking-widest text-center text-lg"
               />
             </Field>
-            <button onClick={join} className="ssp-btn mt-2">Join crew</button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => void join()}
+              className="ssp-btn mt-2"
+            >
+              {saving ? "Joining…" : "Join crew"}
+            </button>
           </div>
         </Sheet>
       )}
@@ -167,6 +258,7 @@ export default function Explore() {
         .ssp-btn { width:100%; background:hsl(var(--primary)); color:hsl(var(--primary-foreground)); font-family:'Space Grotesk',sans-serif; font-weight:700; padding:1rem; border-radius:1rem; border:2px solid hsl(var(--foreground)); box-shadow:4px 4px 0px hsl(var(--foreground)); transition:all .1s; }
         .ssp-btn:hover { transform:translate(2px,2px); box-shadow:2px 2px 0px hsl(var(--foreground)); }
         .ssp-btn:active { transform:translate(4px,4px); box-shadow:none; }
+        .ssp-btn:disabled { opacity:0.6; pointer-events:none; }
       `}</style>
     </div>
   );

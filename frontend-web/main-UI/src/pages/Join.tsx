@@ -1,6 +1,17 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { ClientResponseError } from "pocketbase";
 import { store } from "@/lib/mockStore";
+import { joinCrewByCode } from "@/lib/crewsApi";
+
+function pocketBaseErrorMessage(err: unknown): string {
+  if (err instanceof ClientResponseError) {
+    const data = err.response as { message?: string } | undefined;
+    if (typeof data?.message === "string" && data.message) return data.message;
+    return err.message || "Request failed";
+  }
+  return err instanceof Error ? err.message : "Something went wrong";
+}
 
 export default function Join() {
   const { code } = useParams();
@@ -15,10 +26,20 @@ export default function Join() {
       nav("/welcome", { replace: true });
       return;
     }
-    const g = store.getGroupByCode(code);
-    if (!g) { setError("This invite code doesn't exist."); return; }
-    const joined = store.joinGroup(code);
-    if (joined) nav(`/group/${joined.id}`, { replace: true });
+    let cancelled = false;
+    void (async () => {
+      try {
+        const { crew } = await joinCrewByCode(me.id, code);
+        if (!cancelled) nav(`/group/${crew.id}`, { replace: true });
+      } catch (err) {
+        if (!cancelled) {
+          setError(pocketBaseErrorMessage(err));
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [code, nav]);
 
   return (

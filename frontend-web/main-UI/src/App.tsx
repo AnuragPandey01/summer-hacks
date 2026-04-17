@@ -14,6 +14,7 @@ import LeaderboardPage from "./pages/LeaderboardPage";
 import Explore from "./pages/Explore";
 
 import SocialRank from "./pages/SocialRank";
+import ScreenUsageAdmin from "./pages/ScreenUsageAdmin";
 import Challenges from "./pages/Challenges";
 import ChallengeDetail from "./pages/ChallengeDetail";
 
@@ -38,6 +39,7 @@ const App = () => (
           <Route path="/join/:code" element={<Join />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
           <Route path="/social" element={<SocialRank />} />
+          <Route path="/screen-usage-admin" element={<ScreenUsageAdmin />} />
           <Route path="/challenges" element={<Challenges />} />
           <Route path="/challenge/:id" element={<ChallengeDetail />} />
           <Route path="/me" element={<Me />} />

@@ -174,7 +174,7 @@ export const store = {
           date: new Date(Date.now() - i * 86400000).toISOString().split("T")[0],
           usageMinutes: Math.floor(Math.random() * 180),
         })),
-        friendIds: ["u_rahul_demo", "u_priya_demo"],
+        friendIds: [],
         bio: "Exploring the digital world, one minute at a time.",
         joinDate: new Date().toLocaleDateString("en-US", {
           month: "long",
@@ -333,6 +333,31 @@ export const store = {
       sabbaths: {},
     };
   },
+  /**
+   * Replace PocketBase-backed crews for the current member while keeping local `g_*` demo crews.
+   * Preserves challenges / sabbaths / vouchedHostage for crews that were already hydrated locally.
+   */
+  mergeMyRemoteCrews(remote: Group[], meId: string) {
+    const all = read<Group[]>(KEY_GROUPS, []);
+    const byId = new Map(all.map((g) => [g.id, g]));
+    const next = all.filter((g) => {
+      if (!g.memberIds.includes(meId)) return true;
+      if (g.id.startsWith("g_")) return true;
+      return false;
+    });
+    for (const r of remote) {
+      const prev = byId.get(r.id);
+      next.push({
+        ...r,
+        challenges: prev?.challenges ?? [],
+        sabbaths: prev?.sabbaths ?? {},
+        vouchedHostage: prev?.vouchedHostage ?? null,
+      });
+    }
+    write(KEY_GROUPS, next);
+    emit();
+  },
+
   joinGroup(code: string): Group | null {
 
     const me = this.currentUser();
@@ -367,6 +392,43 @@ export const store = {
   // ---- Usage / Ranking ----
   usageFor(userId: string): Usage | undefined {
     return read<Usage[]>(KEY_USAGE, []).find((u) => u.userId === userId);
+  },
+  /** Merge / replace usage for Social Rank after loading from PocketBase. */
+  applyUsageSnapshot(userId: string, apps: AppUsage[]) {
+    const all = read<Usage[]>(KEY_USAGE, []);
+    const i = all.findIndex((u) => u.userId === userId);
+    const next: Usage = { userId, apps };
+    if (i === -1) all.push(next);
+    else all[i] = next;
+    write(KEY_USAGE, all);
+    emit();
+  },
+  /** Upsert friend (and self) profiles from server without wiping local-only fields when possible. */
+  mergeRemoteUsers(users: User[]) {
+    const all = read<User[]>(KEY_USERS, []);
+    for (const u of users) {
+      const idx = all.findIndex((x) => x.id === u.id);
+      if (idx === -1) {
+        all.push({
+          ...u,
+          friendIds: u.friendIds?.length ? u.friendIds : [],
+        });
+      } else {
+        const prev = all[idx];
+        all[idx] = {
+          ...prev,
+          ...u,
+          friendIds: prev.friendIds?.length ? prev.friendIds : (u.friendIds ?? []),
+        };
+      }
+    }
+    write(KEY_USERS, all);
+    const me = read<User | null>(KEY_USER, null);
+    if (me) {
+      const updated = all.find((x) => x.id === me.id);
+      if (updated) write(KEY_USER, updated);
+    }
+    emit();
   },
   rankedFor(group: Group) {
     const usages: MemberUsage[] = group.memberIds.map((id) => {

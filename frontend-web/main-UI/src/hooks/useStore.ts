@@ -12,7 +12,9 @@ export function useStore<T>(selector: () => T): T {
     // Re-read once on mount in case state changed between render and effect.
     setValue(selector());
     const unsub = store.subscribe(() => setValue(selector()));
-    return () => { unsub; };
+    return () => {
+      unsub();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   return value;

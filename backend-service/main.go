@@ -11,6 +11,7 @@ import (
 	"github.com/pocketbase/pocketbase/tools/osutils"
 
 	"github.com/anuragpandey01/summer-hacks-backend-service/config"
+	"github.com/anuragpandey01/summer-hacks-backend-service/routes"
 	_ "github.com/anuragpandey01/summer-hacks-backend-service/migrations"
 )
 
@@ -69,6 +70,10 @@ func main() {
 		se.Router.GET("/ping", func(re *core.RequestEvent) error {
 			return re.String(200, "pong")
 		})
+
+		routes.RegisterFriendRoutes(se)
+		routes.RegisterCrewRoutes(se)
+		routes.RegisterUsageRoutes(se)
 
 		return se.Next()
 	})

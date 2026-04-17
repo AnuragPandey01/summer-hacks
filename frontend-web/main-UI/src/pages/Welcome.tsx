@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ClientResponseError } from "pocketbase";
 import { store } from "@/lib/mockStore";
+import { refreshMyCrewsInStore } from "@/lib/crewsApi";
 import { pb } from "@/lib/pocketbase";
 import { cn } from "@/lib/utils";
 import { Smartphone, Trophy, Lock } from "lucide-react";
@@ -50,6 +51,16 @@ export default function Welcome() {
     });
   };
 
+  const syncCrewsAfterAuth = async () => {
+    const r = pb.authStore.record as { id?: string } | undefined;
+    if (!r?.id) return;
+    try {
+      await refreshMyCrewsInStore(r.id);
+    } catch {
+      /* PocketBase unreachable — Explore will retry */
+    }
+  };
+
   const submitEmailAuth = async () => {
     setAuthError("");
     const trimmedEmail = email.trim();
@@ -70,6 +81,7 @@ export default function Welcome() {
       }
       await pb.collection("users").authWithPassword(trimmedEmail, password);
       syncPbAuthToStore(name.trim() || trimmedEmail.split("@")[0] || "You");
+      await syncCrewsAfterAuth();
       nav("/groups", { replace: true });
     } catch (err) {
       setAuthError(pocketBaseErrorMessage(err));
@@ -84,6 +96,7 @@ export default function Welcome() {
     try {
       await pb.collection("users").authWithOAuth2({ provider: "google" });
       syncPbAuthToStore("You");
+      await syncCrewsAfterAuth();
       nav("/groups", { replace: true });
     } catch (err) {
       if (!String(err).toLowerCase().includes("cancel")) {

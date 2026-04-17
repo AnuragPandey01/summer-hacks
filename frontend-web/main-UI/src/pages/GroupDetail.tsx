@@ -1,5 +1,8 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { ClientResponseError } from "pocketbase";
+import { pb } from "@/lib/pocketbase";
+import { isPersistedCrewId } from "@/lib/crewsApi";
 import { store } from "@/lib/mockStore";
 import { useStore } from "@/hooks/useStore";
 import { PageHeader } from "@/components/screensplit/PageHeader";
@@ -56,9 +59,21 @@ export default function GroupDetail() {
     window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, "_blank");
   };
 
-  const saveBill = () => {
+  const saveBill = async () => {
     const n = Number(billDraft);
     if (!n || n < 1) return toast.error("Enter a positive number");
+    if (isPersistedCrewId(group.id)) {
+      try {
+        await pb.collection("crews").update(group.id, { bill: n });
+      } catch (err) {
+        const msg =
+          err instanceof ClientResponseError
+            ? err.message || "Could not save bill"
+            : "Could not save bill";
+        toast.error(msg);
+        return;
+      }
+    }
     store.updateGroup(group.id, { bill: n });
     setEditingBill(false);
     toast("Bill updated");
@@ -105,7 +120,8 @@ export default function GroupDetail() {
               className="flex-1 bg-muted rounded-lg px-3 py-2 outline-none border-2 border-transparent focus:border-foreground"
             />
             <button
-              onClick={saveBill}
+              type="button"
+              onClick={() => void saveBill()}
               className="grid place-items-center h-9 w-9 rounded-full bg-primary text-primary-foreground"
             >
               <Check className="h-4 w-4" strokeWidth={3} />
