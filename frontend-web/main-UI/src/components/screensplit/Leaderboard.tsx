@@ -87,9 +87,10 @@ export function Leaderboard({ group, meId, onPokeJailed, onVouch }: Props) {
                     Rank {r.rank}
                   </p>
                   <p className="font-display text-xl font-bold leading-none">
-                    ₹{r.share}
+                    {group.bill > 0 ? `₹${r.share}` : `${Math.round(r.weighted)}m`}
                   </p>
                 </div>
+
               </div>
 
               {isJailed && !vouched && !isMe && (

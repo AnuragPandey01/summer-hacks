@@ -263,7 +263,23 @@ export const store = {
     emit();
     return group;
   },
+  getSocialGroup(): Group | undefined {
+    const me = this.currentUser();
+    if (!me) return undefined;
+    const friendIds = me.friendIds || [];
+    return {
+      id: "social-group",
+      name: "Social Rank",
+      emoji: "🏆",
+      inviteCode: "FRIENDS",
+      bill: 0,
+      memberIds: [me.id, ...friendIds],
+      challenges: [],
+      sabbaths: {},
+    };
+  },
   joinGroup(code: string): Group | null {
+
     const me = this.currentUser();
     if (!me) return null;
     const groups = read<Group[]>(KEY_GROUPS, []);

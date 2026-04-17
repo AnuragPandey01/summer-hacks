@@ -1,14 +1,17 @@
 import { Link, useLocation } from "react-router-dom";
-import { Users, Trophy, Sparkles, Plus } from "lucide-react";
+import { Users, Trophy, Sparkles, Plus, BarChart2 } from "lucide-react";
+
 
 import { cn } from "@/lib/utils";
 
 const items = [
   { to: "/groups", icon: Users, label: "Friends" },
   { to: "/explore", icon: Plus, label: "Crews" },
+  { to: "/social", icon: BarChart2, label: "Stats" },
   { to: "/leaderboard", icon: Trophy, label: "Rank" },
   { to: "/me", icon: Sparkles, label: "Me" },
 ];
+
 
 
 

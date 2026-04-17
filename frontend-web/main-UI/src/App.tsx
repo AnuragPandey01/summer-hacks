@@ -12,6 +12,7 @@ import Join from "./pages/Join.tsx";
 import Me from "./pages/Me.tsx";
 import LeaderboardPage from "./pages/LeaderboardPage.tsx";
 import Explore from "./pages/Explore.tsx";
+import SocialRank from "./pages/SocialRank.tsx";
 
 
 const queryClient = new QueryClient();
@@ -31,6 +32,7 @@ const App = () => (
 
           <Route path="/join/:code" element={<Join />} />
           <Route path="/leaderboard" element={<LeaderboardPage />} />
+          <Route path="/social" element={<SocialRank />} />
           <Route path="/me" element={<Me />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
