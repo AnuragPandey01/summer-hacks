@@ -1,7 +1,7 @@
 // Pure helpers for ScreenSplit ranking + bill multipliers.
 // No React, no storage — easy to unit-test and swap behind a server later.
 
-import { Usage } from "./mockStore";
+
 
 export type Category = "social" | "stream" | "neutral" | "productive";
 
@@ -27,6 +27,12 @@ export interface MemberUsage {
   /** Multiplicative bonus (0..1). 1 = no change. 0.7 = 30% reduction. */
   redemptionMultiplier?: number;
 }
+
+export interface Usage {
+  userId: string;
+  apps: AppUsage[];
+}
+
 
 export function weightedMinutes(usage?: MemberUsage | Usage): number {
   if (!usage) return 0;

@@ -1,8 +1,9 @@
 // Mock data layer backed by localStorage. Swap with Supabase later.
 // Single export `store` with sync getters and a tiny pub/sub for re-renders.
 
-import type { AppUsage, Category, MemberUsage } from "./rank";
+import type { AppUsage, Category, MemberUsage, Usage } from "./rank";
 import { rankGroup } from "./rank";
+
 
 export interface User {
   id: string;
@@ -33,21 +34,27 @@ export interface Challenge {
   id: string;
   title: string;
   emoji: string;
+  description: string;
+  reward: string;
+  requirement: string;
+  type: 'individual' | 'group';
+  category: string;
   endsAt: number;
-  participants: string[]; // userIds in
-  failed: string[];       // userIds who failed
-  completed: string[];    // userIds who completed
+  participants: string[]; 
+  failed: string[];       
+  completed: string[];    
+  isGlobal?: boolean;
 }
 
-export interface Usage {
-  userId: string;
-  apps: AppUsage[];
-}
+
+
 
 const KEY_USER = "ss_current_user";
 const KEY_USERS = "ss_users";
 const KEY_GROUPS = "ss_groups";
 const KEY_USAGE = "ss_usage";
+const KEY_CHALLENGES = "ss_global_challenges";
+
 
 const AVATARS = ["🦊", "🐼", "🦄", "🐸", "🐯", "🐧", "🦉", "🐙"];
 
@@ -340,11 +347,17 @@ export const store = {
       id: uid("ch"),
       title,
       emoji,
+      description: `Targeting ${hours} hours of focus.`,
+      reward: "-0.1 Multiplier",
+      requirement: `${hours} hours phone-free`,
+      type: 'individual',
+      category: 'Sabbath',
       endsAt: Date.now() + hours * 3600_000,
       participants: [...g.memberIds],
       failed: [],
       completed: [],
     };
+
     this.updateGroup(groupId, { challenges: [...g.challenges, ch] });
   },
   resolveChallenge(groupId: string, challengeId: string, winnerIds: string[]) {
@@ -389,8 +402,169 @@ export const store = {
     const users = read<User[]>(KEY_USERS, []);
     const friendIds = me.friendIds || [];
     return users.filter(u => friendIds.includes(u.id));
+  },
+
+  // ---- Global Challenges ----
+  getGlobalChallenges(): Challenge[] {
+    let list = read<Challenge[]>(KEY_CHALLENGES, []);
+    if (list.length === 0) {
+      list = [
+        {
+          id: "sabbath-redemption",
+          title: "Screen Sabbath redemption",
+          emoji: "🧘",
+          description: "Pledge a 4-hour phone-free window. Shave 0.2 off your multiplier.",
+          requirement: "4-hour phone-free window (Verified via inactivity)",
+          reward: "-0.2 Multiplier",
+          type: "individual",
+          category: "Sabbath",
+          endsAt: Date.now() + 86400000,
+          participants: [],
+          failed: [],
+          completed: [],
+          isGlobal: true,
+        },
+        {
+          id: "morning-fast",
+          title: "The Morning Fast",
+          emoji: "☀️",
+          description: "No phone for the first hour after waking. Small reward but builds habit.",
+          requirement: "No activity between 7–9 AM",
+          reward: "-0.05 Multiplier",
+          type: "individual",
+          category: "Sabbath",
+          endsAt: Date.now() + 86400000,
+          participants: [],
+          failed: [],
+          completed: [],
+          isGlobal: true,
+        },
+        {
+          id: "dinner-detox",
+          title: "Dinner Table Detox",
+          emoji: "🍽️",
+          description: "Phone-free during dinner. Earn a 'Present at the table' badge.",
+          requirement: "No notifications/activity 7–9 PM",
+          reward: "Present Badge 🏅",
+          type: "individual",
+          category: "Sabbath",
+          endsAt: Date.now() + 86400000,
+          participants: [],
+          failed: [],
+          completed: [],
+          isGlobal: true,
+        },
+        {
+          id: "deep-work",
+          title: "The Deep Work Block",
+          emoji: "🧠",
+          description: "2-hour focus window where only productivity apps are allowed.",
+          requirement: "Only 'Productive' category apps for 2 hours",
+          reward: "-0.15 Multiplier",
+          type: "individual",
+          category: "Sabbath",
+          endsAt: Date.now() + 86400000,
+          participants: [],
+          failed: [],
+          completed: [],
+          isGlobal: true,
+        },
+        // Group Challenges
+        {
+          id: "collective-detox",
+          title: "The Collective Detox",
+          emoji: "📉",
+          description: "Pod's combined weekly screen time must drop by 20% vs last week.",
+          requirement: "20% reduction across all pod members",
+          reward: "Shared Fund Bonus 💰",
+          type: "group",
+          category: "Group",
+          endsAt: Date.now() + 86400000 * 7,
+          participants: [],
+          failed: [],
+          completed: [],
+          isGlobal: true,
+        },
+        {
+          id: "no-scroll-sunday",
+          title: "No Scroll Sunday",
+          emoji: "🚫",
+          description: "Zero social media across the entire pod for one day. High stakes.",
+          requirement: "0 mins in 'Social' category for 24h",
+          reward: "Immunity Badge 🛡️",
+          type: "group",
+          category: "Group",
+          endsAt: Date.now() + 86400000,
+          participants: [],
+          failed: [],
+          completed: [],
+          isGlobal: true,
+        },
+        {
+          id: "streak-synchrony",
+          title: "Streak Synchrony",
+          emoji: "🔗",
+          description: "All pod members maintain a 3-day low-usage streak simultaneously.",
+          requirement: "All members < 2h for 3 days",
+          reward: "+50 Social XP ⭐",
+          type: "group",
+          category: "Group",
+          endsAt: Date.now() + 86400000 * 3,
+          participants: [],
+          failed: [],
+          completed: [],
+          isGlobal: true,
+        },
+        {
+          id: "category-cleanse",
+          title: "Category Cleanse",
+          emoji: "🧼",
+          description: "Pick one category (Streaming) and the whole pod avoids it for 48h.",
+          requirement: "0 mins in 'Stream' for 48h",
+          reward: "Cleanse Badge 🫧",
+          type: "group",
+          category: "Group",
+          endsAt: Date.now() + 86400000 * 2,
+          participants: [],
+          failed: [],
+          completed: [],
+          isGlobal: true,
+        },
+        {
+          id: "accountability-pair",
+          title: "The Accountability Pair",
+          emoji: "👯",
+          description: "Pod splits into buddy pairs. Each pair shares a combined score.",
+          requirement: "Combined score better than pod average",
+          reward: "Pair Bond Ribbon 🎀",
+          type: "group",
+          category: "Group",
+          endsAt: Date.now() + 86400000 * 4,
+          participants: [],
+          failed: [],
+          completed: [],
+          isGlobal: true,
+        }
+      ];
+      write(KEY_CHALLENGES, list);
+    }
+    return list;
+  },
+  getChallenge(id: string): Challenge | undefined {
+    return this.getGlobalChallenges().find(c => c.id === id);
+  },
+  joinChallenge(id: string, userId: string) {
+    const list = this.getGlobalChallenges();
+    const idx = list.findIndex(c => c.id === id);
+    if (idx === -1) return;
+    if (!list[idx].participants.includes(userId)) {
+      list[idx].participants.push(userId);
+      write(KEY_CHALLENGES, list);
+      emit();
+    }
   }
 };
+
 
 // Optional dev seeding: ensure storage is reachable.
 try {
