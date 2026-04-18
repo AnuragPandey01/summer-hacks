@@ -181,6 +181,31 @@ func RegisterFriendRoutes(se *core.ServeEvent) {
 	se.Router.POST("/friends/requests/{id}/accept", acceptFriendRequest).Bind(apis.RequireAuth("users"))
 	se.Router.POST("/friends/requests/{id}/reject", rejectFriendRequest).Bind(apis.RequireAuth("users"))
 	se.Router.POST("/friends/requests/{id}/cancel", cancelFriendRequest).Bind(apis.RequireAuth("users"))
+	se.Router.POST("/friends/{id}/remove", removeFriend).Bind(apis.RequireAuth("users"))
+}
+
+func removeFriend(re *core.RequestEvent) error {
+	me := re.Auth
+	if me == nil {
+		return re.UnauthorizedError("missing auth", nil)
+	}
+	id := re.Request.PathValue("id")
+	if id == "" {
+		return re.NotFoundError("missing friendship id", nil)
+	}
+	rec, err := re.App.FindRecordById("friendships", id)
+	if err != nil || rec == nil {
+		return re.NotFoundError("friendship not found", nil)
+	}
+	ownerID := rec.GetString("owner")
+	peerID := rec.GetString("peer")
+	if ownerID != me.Id && peerID != me.Id {
+		return re.ForbiddenError("not allowed to remove this friendship", nil)
+	}
+	if err := re.App.Delete(rec); err != nil {
+		return err
+	}
+	return re.JSON(http.StatusOK, map[string]any{"ok": true})
 }
 
 func listFriends(re *core.RequestEvent) error {

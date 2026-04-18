@@ -1,21 +1,70 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import { User, store } from "@/lib/mockStore";
+import { ClientResponseError } from "pocketbase";
+import type { User } from "@/lib/mockStore";
 import { cn } from "@/lib/utils";
-import { Flame, Trophy, BarChart3, X, Mail, BrainCircuit } from "lucide-react";
+import {
+  Flame,
+  Trophy,
+  BarChart3,
+  X,
+  Mail,
+  BrainCircuit,
+  UserMinus,
+} from "lucide-react";
+import { toast } from "sonner";
+import { removeFriend } from "@/lib/friendsApi";
+import {
+  fetchUserScreenTimeline,
+  type UserScreenTimeline,
+} from "@/lib/screenUsageApi";
+
+function pocketBaseErrorMessage(err: unknown): string {
+  if (err instanceof ClientResponseError) {
+    const data = err.response as { message?: string } | undefined;
+    if (typeof data?.message === "string" && data.message) return data.message;
+    return err.message || "Request failed";
+  }
+  return err instanceof Error ? err.message : "Something went wrong";
+}
 
 interface Props {
   user: User;
   onClose: () => void;
+  /** Refresh friends list / social data after a successful remove */
+  onFriendRemoved?: () => void;
 }
 
-export function UserProfileOverlay({ user, onClose }: Props) {
-  const avgUsage = Math.round(user.analytics.reduce((s, a) => s + a.usageMinutes, 0) / 7);
-  const weeklyTotal = Math.round(avgUsage * 7);
-  
-  // Calculate top category (simulated from usage store if possible, or just seed)
-  const usage = store.usageFor(user.id);
-  const topApp = usage?.apps.sort((a,b) => b.minutes - a.minutes)[0];
+export function UserProfileOverlay({
+  user,
+  onClose,
+  onFriendRemoved,
+}: Props) {
+  const [timeline, setTimeline] = useState<UserScreenTimeline | null>(null);
+  const [timelineLoading, setTimelineLoading] = useState(true);
+  const [removingFriend, setRemovingFriend] = useState(false);
+
+  const analytics =
+    timeline !== null
+      ? timeline.analytics
+      : timelineLoading
+        ? []
+        : user.analytics;
+  const dayCount = Math.max(analytics.length, 1);
+  const weeklyTotal = Math.round(
+    analytics.reduce((s, a) => s + a.usageMinutes, 0),
+  );
+  const avgUsage = Math.round(weeklyTotal / dayCount);
+  const topApp = timeline?.topApp;
+  const hasUsage = weeklyTotal > 0;
+  /** Higher when average raw minutes are lower; derived from synced snapshots only. */
+  const focusScore =
+    hasUsage && avgUsage > 0
+      ? Math.max(
+          0,
+          Math.min(100, Math.round(100 - (avgUsage / 240) * 100)),
+        )
+      : null;
 
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
@@ -24,6 +73,48 @@ export function UserProfileOverlay({ user, onClose }: Props) {
       document.body.style.overflow = prevOverflow;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    setTimelineLoading(true);
+    setTimeline(null);
+    void (async () => {
+      try {
+        const t = await fetchUserScreenTimeline(user.id);
+        if (!cancelled) setTimeline(t);
+      } catch {
+        if (!cancelled) setTimeline(null);
+      } finally {
+        if (!cancelled) setTimelineLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user.id]);
+
+  const onRemoveFriend = async () => {
+    const fid = user.friendshipId;
+    if (!fid || removingFriend) return;
+    if (
+      !window.confirm(
+        `Remove ${user.name} from your friends? You can send a new request later.`,
+      )
+    ) {
+      return;
+    }
+    setRemovingFriend(true);
+    try {
+      await removeFriend(fid);
+      toast.success("Friend removed");
+      onFriendRemoved?.();
+      onClose();
+    } catch (err) {
+      toast.error(pocketBaseErrorMessage(err));
+    } finally {
+      setRemovingFriend(false);
+    }
+  };
 
   return createPortal(
     <div
@@ -78,11 +169,15 @@ export function UserProfileOverlay({ user, onClose }: Props) {
                 <div className="grid grid-cols-2 gap-4">
                    <div className="chunky-card p-4 bg-primary/10 border-2 border-foreground flex flex-col items-center group hover:bg-primary/20 transition-colors">
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Avg Daily</p>
-                      <p className="font-display text-2xl font-black text-primary">{avgUsage}m</p>
+                      <p className="font-display text-2xl font-black text-primary">
+                        {timelineLoading ? "…" : `${avgUsage}m`}
+                      </p>
                    </div>
                    <div className="chunky-card p-4 bg-orange-50 border-2 border-foreground flex flex-col items-center group hover:bg-orange-100 transition-colors">
                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground mb-1">Focus Score</p>
-                      <p className="font-display text-2xl font-black text-orange-600">88</p>
+                      <p className="font-display text-2xl font-black text-orange-600">
+                        {timelineLoading ? "…" : focusScore === null ? "—" : focusScore}
+                      </p>
                    </div>
                 </div>
 
@@ -97,20 +192,32 @@ export function UserProfileOverlay({ user, onClose }: Props) {
                                 <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-accent border-2 border-foreground">📱</div>
                                 <div>
                                     <p className="text-[10px] font-black text-muted-foreground uppercase">Favorite App</p>
-                                    <p className="font-display font-bold">{topApp?.appName || "N/A"}</p>
+                                    <p className="font-display font-bold">
+                                      {timelineLoading
+                                        ? "…"
+                                        : topApp?.appName ?? "No data yet"}
+                                    </p>
                                 </div>
                             </div>
-                            <p className="font-mono font-black text-primary">{topApp?.minutes || 0}m</p>
+                            <p className="font-mono font-black text-primary">
+                              {timelineLoading
+                                ? "—"
+                                : topApp
+                                  ? `${topApp.minutes}m`
+                                  : "—"}
+                            </p>
                         </div>
                         <div className="flex items-center justify-between p-4 rounded-2xl bg-card border-2 border-foreground shadow-[2px_2px_0px_rgba(0,0,0,1)]">
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-primary/20 border-2 border-foreground">📅</div>
                                 <div>
                                     <p className="text-[10px] font-black text-muted-foreground uppercase">Weekly Total</p>
-                                    <p className="font-display font-bold">Projected Usage</p>
+                                    <p className="font-display font-bold">Last 7 days</p>
                                 </div>
                             </div>
-                            <p className="font-mono font-black text-orange-600">{weeklyTotal}m</p>
+                            <p className="font-mono font-black text-orange-600">
+                              {timelineLoading ? "…" : `${weeklyTotal}m`}
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -134,11 +241,35 @@ export function UserProfileOverlay({ user, onClose }: Props) {
                    </h3>
                    <div className="chunky-card p-5 bg-card border-2 border-foreground shadow-[4px_4px_0px_rgba(0,0,0,1)]">
                       <div className="flex items-end justify-between h-32 gap-1.5">
-                         {user.analytics.slice().reverse().map((a, i) => {
+                         {timelineLoading && analytics.length === 0 ? (
+                           Array.from({ length: 7 }).map((_, i) => (
+                             <div
+                               key={i}
+                               className="flex-1 flex flex-col items-center gap-2 justify-end"
+                             >
+                               <div className="w-full rounded-t-xl border-2 border-foreground/20 bg-muted animate-pulse min-h-[40%]" />
+                               <span className="text-[10px] font-black text-muted-foreground uppercase">
+                                 ·
+                               </span>
+                             </div>
+                           ))
+                         ) : analytics.length === 0 ? (
+                           <p className="w-full text-center text-sm font-bold text-muted-foreground py-8">
+                             No screen time synced yet for this profile.
+                           </p>
+                         ) : (
+                           [...analytics].reverse().map((a, i) => {
                             const height = Math.min((a.usageMinutes / 240) * 100, 100);
                             const isOverLimit = a.usageMinutes > 120;
+                            const label =
+                              a.date && !Number.isNaN(new Date(`${a.date}T12:00:00Z`).getTime())
+                                ? new Date(`${a.date}T12:00:00Z`).toLocaleDateString("en", {
+                                    weekday: "narrow",
+                                    timeZone: "UTC",
+                                  })
+                                : "—";
                             return (
-                               <div key={i} className="flex-1 flex flex-col items-center gap-2 group relative">
+                               <div key={`${a.date}-${i}`} className="flex-1 flex flex-col items-center gap-2 group relative">
                                   <div 
                                     className={cn(
                                         "w-full rounded-t-xl transition-all border-b-0 border-x-2 border-t-2 border-foreground shadow-sm group-hover:scale-x-110",
@@ -147,14 +278,15 @@ export function UserProfileOverlay({ user, onClose }: Props) {
                                     style={{ height: `${height}%` }}
                                   />
                                   <span className="text-[10px] font-black text-muted-foreground uppercase">
-                                      {new Date(a.date).toLocaleDateString('en', { weekday: 'narrow' })}
+                                      {label}
                                   </span>
                                   <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 bg-foreground text-background text-xs font-black px-2 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-20 shadow-lg">
                                       {a.usageMinutes} mins
                                   </div>
                                </div>
                             );
-                         })}
+                           })
+                         )}
                       </div>
                       <div className="mt-6 pt-6 border-t-2 border-dashed border-foreground/10 flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
                          <div className="flex items-center gap-2">
@@ -171,7 +303,18 @@ export function UserProfileOverlay({ user, onClose }: Props) {
             </div>
         </div>
 
-        <div className="mt-4 shrink-0 border-t-2 border-dashed border-foreground/10 pt-6">
+        <div className="mt-4 shrink-0 border-t-2 border-dashed border-foreground/10 pt-6 space-y-3">
+            {user.friendshipId ? (
+              <button
+                type="button"
+                disabled={removingFriend}
+                onClick={() => void onRemoveFriend()}
+                className="w-full h-12 rounded-2xl border-2 border-destructive bg-destructive/10 text-destructive font-display font-black text-sm shadow-[3px_3px_0px_rgba(0,0,0,1)] active:translate-x-0.5 active:translate-y-0.5 active:shadow-none transition-all hover:bg-destructive/20 disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <UserMinus className="h-4 w-4 shrink-0" />
+                {removingFriend ? "Removing…" : "Remove friend"}
+              </button>
+            ) : null}
             <button 
                 onClick={onClose}
                 className="w-full h-16 bg-foreground text-background font-display font-black text-xl rounded-2xl border-4 border-foreground shadow-[8px_8px_0px_rgba(0,0,0,0.2)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all hover:bg-primary hover:text-primary-foreground"

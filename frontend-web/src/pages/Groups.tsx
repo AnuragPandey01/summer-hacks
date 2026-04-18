@@ -437,6 +437,9 @@ export default function Groups() {
         <UserProfileOverlay
           user={selectedFriend}
           onClose={() => setSelectedFriend(null)}
+          onFriendRemoved={() => {
+            void loadAll();
+          }}
         />
       )}
 

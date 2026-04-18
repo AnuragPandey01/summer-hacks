@@ -70,6 +70,52 @@ export async function fetchSocialUsage(
   return pb.send<SocialUsageResponse>(`/usage/social${q}`, { method: "GET" });
 }
 
+/** UTC calendar dates, oldest first, for aligning with server `report_date`. */
+export function lastNDatesUtc(dayCount: number): string[] {
+  const out: string[] = [];
+  for (let i = dayCount - 1; i >= 0; i--) {
+    const d = new Date();
+    d.setUTCDate(d.getUTCDate() - i);
+    out.push(d.toISOString().slice(0, 10));
+  }
+  return out;
+}
+
+export type UserScreenTimeline = {
+  analytics: { date: string; usageMinutes: number }[];
+  topApp: { appName: string; minutes: number } | null;
+};
+
+/**
+ * Per-day totals and latest top app from `screen_usage_snapshots` via `/usage/social`
+ * (same source as Social Rank). One request per day.
+ */
+export async function fetchUserScreenTimeline(
+  userId: string,
+  dayCount = 7,
+): Promise<UserScreenTimeline> {
+  const dates = lastNDatesUtc(dayCount);
+  const responses = await Promise.all(dates.map((d) => fetchSocialUsage(d)));
+  const analytics = dates.map((date, i) => {
+    const item = responses[i].items.find((x) => x.userId === userId);
+    const usageMinutes = item
+      ? item.apps.reduce((s, a) => s + a.minutes, 0)
+      : 0;
+    return { date, usageMinutes };
+  });
+  let topApp: UserScreenTimeline["topApp"] = null;
+  for (let i = responses.length - 1; i >= 0; i--) {
+    const item = responses[i]?.items.find((x) => x.userId === userId);
+    if (item?.apps?.length) {
+      const sorted = [...item.apps].sort((a, b) => b.minutes - a.minutes);
+      const a = sorted[0];
+      topApp = { appName: a.appName, minutes: Math.round(a.minutes) };
+      break;
+    }
+  }
+  return { analytics, topApp };
+}
+
 export async function upsertMyScreenUsage(body: {
   reportDate?: string;
   apps: AppUsage[];

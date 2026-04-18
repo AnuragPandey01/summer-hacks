@@ -203,6 +203,9 @@ export default function SocialRank() {
             meId={me.id}
             onPokeJailed={onPokeJailed}
             onVouch={onVouch}
+            onFriendRemoved={() => {
+              void loadSocial();
+            }}
           />
         </section>
 

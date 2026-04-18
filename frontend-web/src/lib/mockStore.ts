@@ -23,6 +23,8 @@ export interface User {
   friendIds: string[];
   bio: string;
   joinDate: string;
+  /** PocketBase `friendships` row id when this user came from GET /friends */
+  friendshipId?: string;
 }
 
 export interface Group {
