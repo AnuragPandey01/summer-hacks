@@ -8,6 +8,15 @@ SummerHacks turns screen time management into a social competition. Instead of j
 
 The core innovation is combining **personal tracking** with **social competition** and **group collaboration**—making digital wellness fun and sustainable.
 
+## Project Structure
+
+```
+summer-hacks/
+├── backend-service/    - Go API service
+├── frontend-web/       - React web application
+└── mobile-client/      - Android app
+```
+
 ## Features
 
 **Screen Time Analytics**
@@ -120,15 +129,7 @@ cd mobile-client
 <img src="Screenshots/profile.png" alt="User Profile Screenshot" width="350">
 </div>
 
-## Project Structure
-
-```
-summer-hacks/
-├── backend-service/    - Go API service
-├── frontend-web/       - React web application
-└── mobile-client/      - Android app
-```
 
 ## License
 
-MIT
+MIT — free like mass mammoth on open plain.
