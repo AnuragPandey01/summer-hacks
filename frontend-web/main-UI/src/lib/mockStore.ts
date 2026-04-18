@@ -122,9 +122,11 @@ function seedUsage(userId: string): Usage {
 }
 
 export const store = {
-  subscribe(cb: () => void) {
+  subscribe(cb: () => void): () => void {
     listeners.add(cb);
-    return () => listeners.delete(cb);
+    return () => {
+      listeners.delete(cb);
+    };
   },
 
   // ---- Auth ----

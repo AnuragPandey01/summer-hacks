@@ -53,6 +53,9 @@ export default function Me() {
         {usage && (
           <section className="mt-6 chunky-card p-4 bg-card">
             <h2 className="font-display text-xl font-bold mb-3">Your screen time</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-3">
+              Updated when you publish from the ScreenSplit Android app (cloud button).
+            </p>
             <AppCategoryBar apps={usage.apps} />
             <ul className="mt-4 space-y-1.5">
               {[...usage.apps]
