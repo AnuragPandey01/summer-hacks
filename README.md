@@ -1,10 +1,10 @@
-# SummerHacks
+# ScreenSplit 
 
 A gamified social platform that encourages healthy screen time habits. Track device usage, compete with friends on leaderboards, join crews, and earn rewards—all while building a community focused on digital wellness.
 
 ## About the Project
 
-SummerHacks turns screen time management into a social competition. Instead of just limiting usage, users earn points for maintaining healthy habits, compete against friends, and unlock achievements. The platform includes crew-based challenges where teams work together toward goals, transparent bill splitting for shared subscriptions, and a ranking system that motivates consistent engagement.
+ScreenSplit turns screen time management into a social competition. Instead of just limiting usage, users earn points for maintaining healthy habits, compete against friends, and unlock achievements. The platform includes crew-based challenges where teams work together toward goals, transparent bill splitting for shared subscriptions, and a ranking system that motivates consistent engagement.
 
 The core innovation is combining **personal tracking** with **social competition** and **group collaboration**—making digital wellness fun and sustainable.
 
