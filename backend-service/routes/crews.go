@@ -13,12 +13,13 @@ import (
 const inviteAlphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 
 type crewDTO struct {
-	ID         string   `json:"id"`
-	Name       string   `json:"name"`
-	Emoji      string   `json:"emoji"`
-	InviteCode string   `json:"inviteCode"`
-	Bill       float64  `json:"bill"`
-	MemberIDs  []string `json:"memberIds"`
+	ID         string       `json:"id"`
+	Name       string       `json:"name"`
+	Emoji      string       `json:"emoji"`
+	InviteCode string       `json:"inviteCode"`
+	Bill       float64      `json:"bill"`
+	MemberIDs  []string     `json:"memberIds"`
+	Members    []friendUser `json:"members"`
 }
 
 type crewsListResponse struct {
@@ -49,7 +50,7 @@ func randomInviteCode(n int) string {
 	return string(b)
 }
 
-func crewToDTO(crewRec *core.Record, memberIDs []string) crewDTO {
+func crewToDTO(crewRec *core.Record, memberIDs []string, members []friendUser) crewDTO {
 	bill := crewRec.GetFloat("bill")
 	return crewDTO{
 		ID:         crewRec.Id,
@@ -58,7 +59,23 @@ func crewToDTO(crewRec *core.Record, memberIDs []string) crewDTO {
 		InviteCode: crewRec.GetString("invite_code"),
 		Bill:       bill,
 		MemberIDs:  memberIDs,
+		Members:    members,
 	}
+}
+
+func memberProfilesForUserIDs(app core.App, ids []string) []friendUser {
+	out := make([]friendUser, 0, len(ids))
+	for _, id := range ids {
+		if id == "" {
+			continue
+		}
+		rec, err := app.FindRecordById("users", id)
+		if err != nil || rec == nil {
+			continue
+		}
+		out = append(out, mapUserRecord(rec))
+	}
+	return out
 }
 
 func memberIDsForCrew(app core.App, crewID string) ([]string, error) {
@@ -85,7 +102,8 @@ func loadCrewDTO(app core.App, crewRec *core.Record) (crewDTO, error) {
 	if err != nil {
 		return crewDTO{}, err
 	}
-	return crewToDTO(crewRec, ids), nil
+	members := memberProfilesForUserIDs(app, ids)
+	return crewToDTO(crewRec, ids, members), nil
 }
 
 // RegisterCrewRoutes registers authenticated crew list, create, and join endpoints.

@@ -1,4 +1,6 @@
 import { pb } from "@/lib/pocketbase";
+import type { FriendEdge } from "@/lib/friendsApi";
+import { friendPayloadToUser } from "@/lib/friendsApi";
 import type { Group } from "@/lib/mockStore";
 import { store } from "@/lib/mockStore";
 
@@ -9,6 +11,7 @@ export type CrewDTO = {
   inviteCode: string;
   bill: number;
   memberIds: string[];
+  members?: FriendEdge["user"][];
 };
 
 export function crewDtoToGroup(d: CrewDTO): Group {
@@ -39,6 +42,10 @@ export async function fetchMyCrewDtos(): Promise<CrewDTO[]> {
 
 export async function refreshMyCrewsInStore(meId: string): Promise<void> {
   const items = await fetchMyCrewDtos();
+  const fromCrews = items.flatMap((c) => c.members ?? []).map(friendPayloadToUser);
+  if (fromCrews.length) {
+    store.mergeRemoteUsers(fromCrews);
+  }
   store.mergeMyRemoteCrews(items.map(crewDtoToGroup), meId);
 }
 
