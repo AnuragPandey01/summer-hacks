@@ -37,6 +37,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
 import com.example.test.api.UpsertUsageBody
 import com.example.test.api.UsageApi
+import com.example.test.auth.OAuthJsBridge
 import com.example.test.auth.PocketBaseAuthBridge
 import com.example.test.ui.theme.TestTheme
 import com.example.test.usage.UsageStatsCollector
@@ -202,6 +203,7 @@ private fun WebScreen(
                 WebView(activity).apply {
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
+                    addJavascriptInterface(OAuthJsBridge(activity), "ScreenSplitNative")
                     webViewClient = WebViewClient()
                     loadUrl(url)
                     onWebViewCreated(this)

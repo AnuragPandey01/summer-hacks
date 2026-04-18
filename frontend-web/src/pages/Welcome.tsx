@@ -94,7 +94,17 @@ export default function Welcome() {
     setAuthError("");
     setLoading(true);
     try {
-      await pb.collection("users").authWithOAuth2({ provider: "google" });
+      const native = window.ScreenSplitNative;
+      await pb.collection("users").authWithOAuth2({
+        provider: "google",
+        ...(typeof native?.openOAuthUrl === "function"
+          ? {
+              urlCallback: (oauthUrl: string) => {
+                native.openOAuthUrl(oauthUrl);
+              },
+            }
+          : {}),
+      });
       syncPbAuthToStore("You");
       await syncCrewsAfterAuth();
       nav("/groups", { replace: true });
