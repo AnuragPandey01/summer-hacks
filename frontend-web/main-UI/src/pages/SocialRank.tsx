@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { ClientResponseError } from "pocketbase";
 import { store, type Group, type User } from "@/lib/mockStore";
 import { useStore } from "@/hooks/useStore";
@@ -14,7 +14,7 @@ import {
   fetchSocialUsage,
   pbAuthRecordToUser,
 } from "@/lib/screenUsageApi";
-import { TrendingUp, Zap, Settings2 } from "lucide-react";
+import { TrendingUp, Zap } from "lucide-react";
 import { toast } from "sonner";
 
 function pocketBaseErrorMessage(err: unknown): string {
@@ -140,16 +140,6 @@ export default function SocialRank() {
           }
         />
 
-        <div className="mt-2 flex justify-end">
-          <Link
-            to="/screen-usage-admin"
-            className="inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground"
-          >
-            <Settings2 className="h-3.5 w-3.5" />
-            Usage admin
-          </Link>
-        </div>
-
         {myUsage && myUsage.apps.length > 0 ? (
           <section className="mt-4 chunky-card p-5 bg-card">
             <h2 className="font-display text-xl font-bold mb-4">Your usage</h2>
@@ -191,11 +181,9 @@ export default function SocialRank() {
         ) : (
           <section className="mt-4 chunky-card p-5 bg-card border-2 border-dashed border-foreground/20">
             <p className="font-display font-bold text-sm text-muted-foreground text-center">
-              No usage snapshot for today yet. Open{" "}
-              <Link to="/screen-usage-admin" className="text-primary underline">
-                Usage admin
-              </Link>{" "}
-              to seed data, or sync from the Android app once it posts to PocketBase.
+              No usage snapshot for today yet. Open the ScreenSplit Android app, sign in
+              here in the web view, then use the cloud upload button to publish today&apos;s
+              screen time to PocketBase.
             </p>
           </section>
         )}
