@@ -92,23 +92,23 @@ cd mobile-client
 
 **Dashboard & Home**
 
-![Dashboard Screenshot](Screenshots/Dashboard.png)
+<img src="Screenshots/Dashboard.png" alt="Dashboard Screenshot" width="350">
 
 **Leaderboard**
 
-![Leaderboard Screenshot](Screenshots/Leaderboard.png)
+<img src="Screenshots/Leaderboard.png" alt="Leaderboard Screenshot" width="350">
 
 **Crew Details**
 
-![Crew Details Screenshot](Screenshots/CrewDetails.jpeg)
+<img src="Screenshots/CrewDetails.jpeg" alt="Crew Details Screenshot" width="350">
 
 **Bill Breakdown**
 
-![Bill Breakdown Screenshot](Screenshots/bill_breakdown.jpeg)
+<img src="Screenshots/bill_breakdown.jpeg" alt="Bill Breakdown Screenshot" width="350">
 
 **User Profile**
 
-![User Profile Screenshot](Screenshots/profile.png)
+<img src="Screenshots/profile.png" alt="User Profile Screenshot" width="350">
 
 ## Project Structure
 
