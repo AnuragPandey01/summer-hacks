@@ -4,9 +4,9 @@ import { cn } from "@/lib/utils";
 
 const items = [
   { to: "/groups", icon: Users, label: "Friends" },
-  { to: "/explore", icon: Plus, label: "Crews" },
+  { to: "/explore", icon: Plus, label: "Split" },
   { to: "/social", icon: BarChart2, label: "Stats" },
-  { to: "/challenges", icon: Zap, label: "Tasks" },
+  { to: "/challenges", icon: Zap, label: "Challenges" },
   { to: "/leaderboard", icon: Trophy, label: "Rank" },
   { to: "/me", icon: Sparkles, label: "Me" },
 ];
