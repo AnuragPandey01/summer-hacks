@@ -16,6 +16,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.Icons
@@ -88,7 +89,8 @@ class MainActivity : ComponentActivity() {
                         url = BuildConfig.WEB_APP_URL,
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(innerPadding),
+                            .padding(innerPadding)
+                            .imePadding(),
                         onWebViewCreated = { webView = it },
                     )
                 }

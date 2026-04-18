@@ -13,6 +13,7 @@
 
 @layer base {
   :root {
+    --keyboard-inset: 0px;
     /* Surface */
     --background: 42 60% 96%;          /* warm cream */
     --foreground: 240 18% 10%;         /* near-black ink */
@@ -104,15 +105,20 @@
   * {
     @apply border-border;
   }
-  html, body, #root {
-    @apply h-full;
+  html {
+    min-height: 100%;
   }
   body {
+    min-height: 100%;
+    padding-bottom: var(--keyboard-inset);
     @apply bg-background text-foreground antialiased;
     font-family: 'Inter', system-ui, sans-serif;
     background-image:
       radial-gradient(hsl(240 18% 10% / 0.04) 1px, transparent 1px);
     background-size: 20px 20px;
+  }
+  #root {
+    min-height: 100%;
   }
   h1, h2, h3, h4 {
     font-family: 'Space Grotesk', sans-serif;
