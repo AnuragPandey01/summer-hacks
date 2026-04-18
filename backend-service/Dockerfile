@@ -21,10 +21,11 @@ RUN apk add --no-cache ca-certificates
 COPY --from=builder /app/server /pb/server
 COPY --from=builder /app/config /pb/config
 
-# Optional: mount a volume at /pb/pb_data for persistence (Cloud Run volume)
-VOLUME ["/pb/pb_data"]
+# Create an empty .env file to satisfy the loader
+RUN touch /pb/.env
 
+VOLUME ["/pb/pb_data"]
 EXPOSE 8080
 
-# Cloud Run requires listening on $PORT (default to 8080)
-CMD ["sh", "-c", "/pb/server serve --http=0.0.0.0:$PORT"]
+# Use PORT from Cloud Run (default 8080)
+CMD ["sh", "-c", "/pb/server serve --http=0.0.0.0:${PORT:-8080}"]
