@@ -92,23 +92,33 @@ cd mobile-client
 
 **Dashboard & Home**
 
+<div align="center">
 <img src="Screenshots/Dashboard.png" alt="Dashboard Screenshot" width="350">
+</div>
 
 **Leaderboard**
 
+<div align="center">
 <img src="Screenshots/Leaderboard.png" alt="Leaderboard Screenshot" width="350">
+</div>
 
 **Crew Details**
 
+<div align="center">
 <img src="Screenshots/CrewDetails.jpeg" alt="Crew Details Screenshot" width="350">
+</div>
 
 **Bill Breakdown**
 
+<div align="center">
 <img src="Screenshots/bill_breakdown.jpeg" alt="Bill Breakdown Screenshot" width="350">
+</div>
 
 **User Profile**
 
+<div align="center">
 <img src="Screenshots/profile.png" alt="User Profile Screenshot" width="350">
+</div>
 
 ## Project Structure
 
