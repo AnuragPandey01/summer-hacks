@@ -3,6 +3,14 @@
 
 import type { AppUsage, Category, MemberUsage, Usage } from "./rank";
 import { rankGroup } from "./rank";
+import {
+  allParticipantsPass,
+  badgeForChallengeComplete,
+  evalChanged,
+  evaluateGlobalChallenge,
+  mergeEvalIntoChallenge,
+  migrateGlobalChallenges,
+} from "./globalChallengeEval";
 
 export interface User {
   id: string;
@@ -43,6 +51,8 @@ export interface Challenge {
   failed: string[];       
   completed: string[];    
   isGlobal?: boolean;
+  /** Requires time-of-day data, inactivity sensors, history, or pairing — not in web snapshot yet */
+  comingSoon?: boolean;
 }
 
 
@@ -402,6 +412,7 @@ export const store = {
     else all[i] = next;
     write(KEY_USAGE, all);
     emit();
+    this.syncGlobalChallengeProgress();
   },
   /** Upsert friend (and self) profiles from server without wiping local-only fields when possible. */
   mergeRemoteUsers(users: User[]) {
@@ -514,148 +525,65 @@ export const store = {
     return users.filter(u => friendIds.includes(u.id));
   },
 
+  grantBadge(userId: string, badge: string) {
+    const users = read<User[]>(KEY_USERS, []);
+    const idx = users.findIndex((u) => u.id === userId);
+    if (idx === -1) return;
+    if (!users[idx].badges) users[idx].badges = [];
+    if (users[idx].badges.includes(badge)) return;
+    users[idx].badges.push(badge);
+    write(KEY_USERS, users);
+    const me = read<User | null>(KEY_USER, null);
+    if (me?.id === userId) {
+      write(KEY_USER, users[idx]);
+    }
+    emit();
+  },
+
+  syncGlobalChallengeProgress() {
+    const stored = read<Challenge[]>(KEY_CHALLENGES, []);
+    const { list: base, changed: migrated } = migrateGlobalChallenges(
+      stored,
+      Date.now(),
+    );
+    let progressChanged = false;
+    const nextList = base.map((ch) => {
+      if (ch.comingSoon) return ch;
+      const evaluated = evaluateGlobalChallenge(ch, (id) => this.usageFor(id));
+      const merged = mergeEvalIntoChallenge(ch, evaluated);
+      if (!evalChanged(ch, merged)) return ch;
+      progressChanged = true;
+      const badge = badgeForChallengeComplete(ch.id);
+      if (badge) {
+        if (ch.type === "group") {
+          const wasAll = allParticipantsPass(ch, ch.completed);
+          const nowAll = allParticipantsPass(merged, merged.completed);
+          if (nowAll && !wasAll) {
+            for (const uid of ch.participants) {
+              this.grantBadge(uid, badge);
+            }
+          }
+        } else {
+          for (const uid of merged.completed) {
+            if (!ch.completed.includes(uid)) {
+              this.grantBadge(uid, badge);
+            }
+          }
+        }
+      }
+      return merged;
+    });
+    if (migrated || progressChanged) {
+      write(KEY_CHALLENGES, nextList);
+      emit();
+    }
+  },
+
   // ---- Global Challenges ----
   getGlobalChallenges(): Challenge[] {
-    let list = read<Challenge[]>(KEY_CHALLENGES, []);
-    if (list.length === 0) {
-      list = [
-        {
-          id: "sabbath-redemption",
-          title: "Screen Sabbath redemption",
-          emoji: "🧘",
-          description: "Pledge a 4-hour phone-free window. Shave 0.2 off your multiplier.",
-          requirement: "4-hour phone-free window (Verified via inactivity)",
-          reward: "-0.2 Multiplier",
-          type: "individual",
-          category: "Sabbath",
-          endsAt: Date.now() + 86400000,
-          participants: [],
-          failed: [],
-          completed: [],
-          isGlobal: true,
-        },
-        {
-          id: "morning-fast",
-          title: "The Morning Fast",
-          emoji: "☀️",
-          description: "No phone for the first hour after waking. Small reward but builds habit.",
-          requirement: "No activity between 7–9 AM",
-          reward: "-0.05 Multiplier",
-          type: "individual",
-          category: "Sabbath",
-          endsAt: Date.now() + 86400000,
-          participants: [],
-          failed: [],
-          completed: [],
-          isGlobal: true,
-        },
-        {
-          id: "dinner-detox",
-          title: "Dinner Table Detox",
-          emoji: "🍽️",
-          description: "Phone-free during dinner. Earn a 'Present at the table' badge.",
-          requirement: "No notifications/activity 7–9 PM",
-          reward: "Present Badge 🏅",
-          type: "individual",
-          category: "Sabbath",
-          endsAt: Date.now() + 86400000,
-          participants: [],
-          failed: [],
-          completed: [],
-          isGlobal: true,
-        },
-        {
-          id: "deep-work",
-          title: "The Deep Work Block",
-          emoji: "🧠",
-          description: "2-hour focus window where only productivity apps are allowed.",
-          requirement: "Only 'Productive' category apps for 2 hours",
-          reward: "-0.15 Multiplier",
-          type: "individual",
-          category: "Sabbath",
-          endsAt: Date.now() + 86400000,
-          participants: [],
-          failed: [],
-          completed: [],
-          isGlobal: true,
-        },
-        // Group Challenges
-        {
-          id: "collective-detox",
-          title: "The Collective Detox",
-          emoji: "📉",
-          description: "Pod's combined weekly screen time must drop by 20% vs last week.",
-          requirement: "20% reduction across all pod members",
-          reward: "Shared Fund Bonus 💰",
-          type: "group",
-          category: "Group",
-          endsAt: Date.now() + 86400000 * 7,
-          participants: [],
-          failed: [],
-          completed: [],
-          isGlobal: true,
-        },
-        {
-          id: "no-scroll-sunday",
-          title: "No Scroll Sunday",
-          emoji: "🚫",
-          description: "Zero social media across the entire pod for one day. High stakes.",
-          requirement: "0 mins in 'Social' category for 24h",
-          reward: "Immunity Badge 🛡️",
-          type: "group",
-          category: "Group",
-          endsAt: Date.now() + 86400000,
-          participants: [],
-          failed: [],
-          completed: [],
-          isGlobal: true,
-        },
-        {
-          id: "streak-synchrony",
-          title: "Streak Synchrony",
-          emoji: "🔗",
-          description: "All pod members maintain a 3-day low-usage streak simultaneously.",
-          requirement: "All members < 2h for 3 days",
-          reward: "+50 Social XP ⭐",
-          type: "group",
-          category: "Group",
-          endsAt: Date.now() + 86400000 * 3,
-          participants: [],
-          failed: [],
-          completed: [],
-          isGlobal: true,
-        },
-        {
-          id: "category-cleanse",
-          title: "Category Cleanse",
-          emoji: "🧼",
-          description: "Pick one category (Streaming) and the whole pod avoids it for 48h.",
-          requirement: "0 mins in 'Stream' for 48h",
-          reward: "Cleanse Badge 🫧",
-          type: "group",
-          category: "Group",
-          endsAt: Date.now() + 86400000 * 2,
-          participants: [],
-          failed: [],
-          completed: [],
-          isGlobal: true,
-        },
-        {
-          id: "accountability-pair",
-          title: "The Accountability Pair",
-          emoji: "👯",
-          description: "Pod splits into buddy pairs. Each pair shares a combined score.",
-          requirement: "Combined score better than pod average",
-          reward: "Pair Bond Ribbon 🎀",
-          type: "group",
-          category: "Group",
-          endsAt: Date.now() + 86400000 * 4,
-          participants: [],
-          failed: [],
-          completed: [],
-          isGlobal: true,
-        }
-      ];
+    const stored = read<Challenge[]>(KEY_CHALLENGES, []);
+    const { list, changed } = migrateGlobalChallenges(stored, Date.now());
+    if (changed) {
       write(KEY_CHALLENGES, list);
     }
     return list;
@@ -667,11 +595,13 @@ export const store = {
     const list = this.getGlobalChallenges();
     const idx = list.findIndex(c => c.id === id);
     if (idx === -1) return;
+    if (list[idx].comingSoon) return;
     if (!list[idx].participants.includes(userId)) {
       list[idx].participants.push(userId);
       write(KEY_CHALLENGES, list);
       emit();
     }
+    this.syncGlobalChallengeProgress();
   }
 };
 
