@@ -27,4 +27,4 @@ VOLUME ["/pb/pb_data"]
 EXPOSE 8080
 
 # Cloud Run requires listening on $PORT (default to 8080)
-CMD ["sh", "-c", "/pb/server serve --http=0.0.0.0:${PORT:-8080}"]
+CMD ["/pb/server", "serve", "--http=0.0.0.0:8080"]
