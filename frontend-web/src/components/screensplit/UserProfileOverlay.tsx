@@ -1,6 +1,8 @@
+import { useEffect } from "react";
+import { createPortal } from "react-dom";
 import { User, store } from "@/lib/mockStore";
 import { cn } from "@/lib/utils";
-import { Flame, Trophy, BarChart3, X, Mail, Globe, BrainCircuit } from "lucide-react";
+import { Flame, Trophy, BarChart3, X, Mail, BrainCircuit } from "lucide-react";
 
 interface Props {
   user: User;
@@ -15,24 +17,40 @@ export function UserProfileOverlay({ user, onClose }: Props) {
   const usage = store.usageFor(user.id);
   const topApp = usage?.apps.sort((a,b) => b.minutes - a.minutes)[0];
 
-  return (
-    <div className="fixed inset-0 z-[60] flex items-end justify-center px-4 sm:items-center" onClick={onClose}>
-      <div className="absolute inset-0 bg-foreground/60 backdrop-blur-md" />
+  useEffect(() => {
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, []);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[200] flex touch-manipulation items-end justify-center px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center sm:pb-0"
+      onClick={onClose}
+      role="presentation"
+    >
+      <div className="absolute inset-0 bg-foreground/70" aria-hidden />
       <div
-        className="relative w-full max-w-md bg-background border-4 border-foreground rounded-[2.5rem] p-6 pb-12 animate-rise shadow-[0_-20px_50px_rgba(0,0,0,0.3)] max-h-[90vh] flex flex-col overflow-hidden sm:rounded-[3rem]"
+        className={cn(
+          "relative flex w-full max-w-md flex-col overflow-hidden rounded-[2.5rem] border-4 border-foreground bg-background p-6 pb-8 shadow-[0_-20px_50px_rgba(0,0,0,0.3)] animate-rise sm:rounded-[3rem]",
+          /* Explicit height + flex scroll: WebView collapses max-h-only flex columns to ~0 */
+          "h-[min(90dvh,calc(100svh-2.5rem))] max-h-[min(90dvh,calc(100svh-2.5rem))] min-h-[40%]",
+        )}
         onClick={(e) => e.stopPropagation()}
       >
         <button 
             onClick={onClose}
-            className="absolute top-6 right-6 h-10 w-10 grid place-items-center rounded-full bg-muted hover:bg-accent transition-colors border-2 border-foreground shadow-[2px_2px_0px_rgba(0,0,0,1)] z-10"
+            className="absolute top-6 right-6 z-10 grid h-10 w-10 place-items-center rounded-full border-2 border-foreground bg-muted shadow-[2px_2px_0px_rgba(0,0,0,1)] transition-colors hover:bg-accent"
             aria-label="Close"
         >
             <X className="h-5 w-5" />
         </button>
         
-        <div className="mx-auto h-2 w-16 rounded-full bg-foreground/10 mb-8 shrink-0" />
+        <div className="mx-auto mb-6 h-2 w-16 shrink-0 rounded-full bg-foreground/10" />
         
-        <div className="overflow-y-auto pr-1 -mr-1 custom-scrollbar">
+        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1 -mr-1 [-webkit-overflow-scrolling:touch]">
             <div className="flex flex-col items-center text-center">
                 <div className="h-28 w-28 rounded-full border-4 border-foreground bg-card shadow-[4px_4px_0px_rgba(0,0,0,1)] grid place-items-center text-6xl mb-4 relative animate-rise">
                    {user.avatar}
@@ -155,7 +173,7 @@ export function UserProfileOverlay({ user, onClose }: Props) {
             </div>
         </div>
 
-        <div className="mt-8 shrink-0">
+        <div className="mt-4 shrink-0 border-t-2 border-dashed border-foreground/10 pt-6">
             <button 
                 onClick={onClose}
                 className="w-full h-16 bg-foreground text-background font-display font-black text-xl rounded-2xl border-4 border-foreground shadow-[8px_8px_0px_rgba(0,0,0,0.2)] active:translate-x-1 active:translate-y-1 active:shadow-none transition-all hover:bg-primary hover:text-primary-foreground"
@@ -173,6 +191,7 @@ export function UserProfileOverlay({ user, onClose }: Props) {
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: hsl(var(--foreground)/0.1); border-radius: 10px; }
       `}</style>
-    </div>
+    </div>,
+    document.body,
   );
 }
