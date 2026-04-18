@@ -6,14 +6,18 @@ import android.content.Intent
 import android.os.Bundle
 import android.os.Process
 import android.provider.Settings
+import android.util.Log
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudUpload
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,8 +26,12 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.lifecycleScope
@@ -36,6 +44,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import retrofit2.HttpException
+
+/** ScreenSplit web theme: `index.css` --background / --foreground (cream + ink). */
+private val ScreenSplitBackground = Color(0xFFFAF7EF)
+private val ScreenSplitInk = Color(0xFF18181F)
 
 class MainActivity : ComponentActivity() {
 
@@ -54,6 +66,11 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
                         TopAppBar(
+                            colors = TopAppBarDefaults.topAppBarColors(
+                                containerColor = ScreenSplitBackground,
+                                titleContentColor = ScreenSplitInk,
+                                actionIconContentColor = ScreenSplitInk,
+                            ),
                             title = { Text("ScreenSplit") },
                             actions = {
                                 IconButton(onClick = { publishUsage(usageApi) }) {
@@ -166,16 +183,45 @@ class MainActivity : ComponentActivity() {
 private fun WebScreen(
     url: String,
     modifier: Modifier = Modifier,
-    onWebViewCreated: (WebView) -> Unit,
+    onWebViewCreated: (WebView?) -> Unit,
 ) {
+    val activity = LocalContext.current as? ComponentActivity
+    if (activity == null) {
+        LaunchedEffect(Unit) {
+            onWebViewCreated(null)
+        }
+        Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            Text("Can’t load the web app (missing activity context).")
+        }
+        return
+    }
+
     AndroidView(
-        factory = { ctx ->
-            WebView(ctx).apply {
-                settings.javaScriptEnabled = true
-                settings.domStorageEnabled = true
-                webViewClient = WebViewClient()
-                loadUrl(url)
-                onWebViewCreated(this)
+        factory = {
+            try {
+                WebView(activity).apply {
+                    settings.javaScriptEnabled = true
+                    settings.domStorageEnabled = true
+                    webViewClient = WebViewClient()
+                    loadUrl(url)
+                    onWebViewCreated(this)
+                }
+            } catch (e: Throwable) {
+                val cause = e.cause?.message ?: e.message ?: e.javaClass.simpleName
+                Log.e("WebScreen", "WebView failed to start", e)
+                onWebViewCreated(null)
+                TextView(activity).apply {
+                    text =
+                        """
+                        WebView could not start (system browser component missing or broken).
+
+                        Install or update “Android System WebView” or Google Chrome from the Play Store, then reopen the app.
+
+                        Details: $cause
+                        """.trimIndent()
+                    setPadding(48, 48, 48, 48)
+                    textSize = 14f
+                }
             }
         },
         modifier = modifier,

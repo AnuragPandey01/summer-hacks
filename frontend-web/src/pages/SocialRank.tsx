@@ -150,7 +150,10 @@ export default function SocialRank() {
                   Total Raw
                 </p>
                 <p className="font-display text-lg font-bold">
-                  {myUsage.apps.reduce((s, a) => s + a.minutes, 0)}m
+                  {myUsage.apps
+                    .reduce((s, a) => s + a.minutes, 0)
+                    .toFixed(2)}
+                  m
                 </p>
               </div>
               <div className="text-right">

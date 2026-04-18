@@ -5,6 +5,7 @@ import { useStore } from "@/hooks/useStore";
 import { PageHeader } from "@/components/screensplit/PageHeader";
 import { BottomNav } from "@/components/screensplit/BottomNav";
 import { AppCategoryBar } from "@/components/screensplit/AppCategoryBar";
+import { appDisplayName } from "@/lib/appDisplayName";
 import { LogOut } from "lucide-react";
 
 export default function Me() {
@@ -61,12 +62,29 @@ export default function Me() {
               {[...usage.apps]
                 .sort((a, b) => b.minutes - a.minutes)
                 .slice(0, 6)
-                .map((a) => (
-                  <li key={a.appName} className="flex items-center justify-between text-sm">
-                    <span>{a.appName}</span>
-                    <span className="font-mono text-xs text-muted-foreground">{a.minutes}m</span>
-                  </li>
-                ))}
+                .map((a) => {
+                  const label = appDisplayName(a.appName);
+                  const initial = label.charAt(0).toUpperCase() || "?";
+                  return (
+                    <li
+                      key={a.appName}
+                      className="flex items-center justify-between gap-2 text-sm"
+                    >
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="h-8 w-8 shrink-0 rounded-xl border-2 border-foreground/15 bg-muted grid place-items-center text-xs font-black font-display"
+                          aria-hidden
+                        >
+                          {initial}
+                        </span>
+                        <span className="truncate">{label}</span>
+                      </span>
+                      <span className="font-mono text-xs text-muted-foreground shrink-0">
+                        {a.minutes}m
+                      </span>
+                    </li>
+                  );
+                })}
             </ul>
           </section>
         )}

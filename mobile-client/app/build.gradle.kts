@@ -23,12 +23,12 @@ android {
             buildConfigField(
                 "String",
                 "WEB_APP_URL",
-                "\"http://10.0.2.2:5173/\"",
+                "\"https://summer-hacks-lime.vercel.app/\"",
             )
             buildConfigField(
                 "String",
                 "POCKETBASE_URL",
-                "\"http://10.0.2.2:8090/\"",
+                "\"https://summerhacks-917307213566.asia-south1.run.app/\"",
             )
         }
         release {
@@ -40,12 +40,12 @@ android {
             buildConfigField(
                 "String",
                 "WEB_APP_URL",
-                "\"https://YOUR_WEB_HOST/\"",
+                "\"https://summer-hacks-lime.vercel.app/\"",
             )
             buildConfigField(
                 "String",
                 "POCKETBASE_URL",
-                "\"https://YOUR_POCKETBASE_HOST/\"",
+                "\"https://summerhacks-917307213566.asia-south1.run.app/\"",
             )
         }
     }
@@ -82,4 +82,5 @@ dependencies {
     implementation("com.squareup.retrofit2:retrofit:2.9.0")
     implementation("com.squareup.retrofit2:converter-gson:2.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
+    implementation("androidx.webkit:webkit:1.12.1")
 }
