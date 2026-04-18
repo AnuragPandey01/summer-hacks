@@ -27,16 +27,14 @@ export function UserProfileOverlay({ user, onClose }: Props) {
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[200] flex touch-manipulation items-end justify-center px-4 pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:items-center sm:pb-0"
+      className="fixed inset-0 z-[200] box-border flex min-h-0 touch-manipulation justify-center px-3 pt-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-6 sm:py-6"
       onClick={onClose}
       role="presentation"
     >
       <div className="absolute inset-0 bg-foreground/70" aria-hidden />
       <div
         className={cn(
-          "relative flex w-full max-w-md flex-col overflow-hidden rounded-[2.5rem] border-4 border-foreground bg-background p-6 pb-8 shadow-[0_-20px_50px_rgba(0,0,0,0.3)] animate-rise sm:rounded-[3rem]",
-          /* Explicit height + flex scroll: WebView collapses max-h-only flex columns to ~0 */
-          "h-[min(90dvh,calc(100svh-2.5rem))] max-h-[min(90dvh,calc(100svh-2.5rem))] min-h-[40%]",
+          "relative flex min-h-0 w-full max-w-md flex-col self-stretch overflow-hidden rounded-[2.5rem] border-4 border-foreground bg-background p-6 pb-8 shadow-[0_12px_50px_rgba(0,0,0,0.25)] animate-rise sm:rounded-[3rem]",
         )}
         onClick={(e) => e.stopPropagation()}
       >
