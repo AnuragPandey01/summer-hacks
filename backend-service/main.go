@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+
 	"github.com/joho/godotenv"
 	"github.com/pocketbase/pocketbase"
 	"github.com/pocketbase/pocketbase/core"
@@ -11,17 +12,14 @@ import (
 	"github.com/pocketbase/pocketbase/tools/osutils"
 
 	"github.com/anuragpandey01/summer-hacks-backend-service/config"
-	"github.com/anuragpandey01/summer-hacks-backend-service/routes"
 	_ "github.com/anuragpandey01/summer-hacks-backend-service/migrations"
+	"github.com/anuragpandey01/summer-hacks-backend-service/routes"
 )
 
 func main() {
 	app := pocketbase.New()
 
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	_ = godotenv.Load()
 
 	m.Register(func(app core.App) error {
 
@@ -46,7 +44,7 @@ func main() {
 
 		s.Logs.MaxDays = cfg.Logs.MaxDays
 		s.Logs.LogIP = cfg.Logs.LogIP
-		
+
 		s.S3.Enabled = cfg.S3.Enabled
 		s.S3.Endpoint = cfg.S3.Endpoint
 		s.S3.Bucket = cfg.S3.Bucket
@@ -55,7 +53,7 @@ func main() {
 		s.S3.Region = cfg.S3.Region
 
 		s.Batch.Enabled = true
-		
+
 		return app.Save(s)
 	}, nil)
 
