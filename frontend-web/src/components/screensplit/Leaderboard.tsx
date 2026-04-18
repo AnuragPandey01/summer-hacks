@@ -11,9 +11,16 @@ interface Props {
   meId: string;
   onPokeJailed?: (userId: string) => void;
   onVouch?: (userId: string) => void;
+  onFriendRemoved?: () => void;
 }
 
-export function Leaderboard({ group, meId, onPokeJailed, onVouch }: Props) {
+export function Leaderboard({
+  group,
+  meId,
+  onPokeJailed,
+  onVouch,
+  onFriendRemoved,
+}: Props) {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const ranked = store.rankedFor(group);
   const sorted = [...ranked].sort((a, b) => a.rank - b.rank);
@@ -117,7 +124,8 @@ export function Leaderboard({ group, meId, onPokeJailed, onVouch }: Props) {
       {selectedUser && (
         <UserProfileOverlay 
           user={selectedUser} 
-          onClose={() => setSelectedUser(null)} 
+          onClose={() => setSelectedUser(null)}
+          onFriendRemoved={onFriendRemoved}
         />
       )}
 

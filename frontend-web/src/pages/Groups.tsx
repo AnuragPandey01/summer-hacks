@@ -19,6 +19,7 @@ import {
   rejectFriendRequest,
   requestFriendByEmail,
 } from "@/lib/friendsApi";
+import { pb } from "@/lib/pocketbase";
 
 function pocketBaseErrorMessage(err: unknown): string {
   if (err instanceof ClientResponseError) {
@@ -76,10 +77,51 @@ export default function Groups() {
     void loadAll();
   }, [loadAll]);
 
-  if (!me) {
-    nav("/welcome", { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (!me?.id || !pb.authStore.isValid) return;
+
+    let cancelled = false;
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleReload = () => {
+      if (cancelled) return;
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        debounceTimer = null;
+        if (!cancelled) void loadAll();
+      }, 100);
+    };
+
+    const uid = me.id;
+    const frFilter = `from = "${uid}" || to = "${uid}"`;
+    const fsFilter = `owner = "${uid}" || peer = "${uid}"`;
+
+    let unsubFr: (() => Promise<void>) | undefined;
+    let unsubFs: (() => Promise<void>) | undefined;
+
+    void (async () => {
+      try {
+        unsubFr = await pb.collection("friend_requests").subscribe(
+          "*",
+          () => scheduleReload(),
+          { filter: frFilter },
+        );
+        unsubFs = await pb.collection("friendships").subscribe(
+          "*",
+          () => scheduleReload(),
+          { filter: fsFilter },
+        );
+      } catch {
+        /* realtime is best-effort; lists still refresh on actions + mount */
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+      if (debounceTimer) clearTimeout(debounceTimer);
+      void unsubFr?.();
+      void unsubFs?.();
+    };
+  }, [me?.id, loadAll]);
 
   const filteredFriends = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -90,6 +132,11 @@ export default function Groups() {
         f.email.toLowerCase().includes(q),
     );
   }, [friends, search]);
+
+  if (!me) {
+    nav("/welcome", { replace: true });
+    return null;
+  }
 
   const sendRequest = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -390,6 +437,9 @@ export default function Groups() {
         <UserProfileOverlay
           user={selectedFriend}
           onClose={() => setSelectedFriend(null)}
+          onFriendRemoved={() => {
+            void loadAll();
+          }}
         />
       )}
 

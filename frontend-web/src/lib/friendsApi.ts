@@ -34,17 +34,9 @@ export type RequestByEmailStatus =
   | "request_pending"
   | "now_friends";
 
-function defaultAnalytics(): User["analytics"] {
-  return Array.from({ length: 7 }).map((_, i) => ({
-    date: new Date(Date.now() - i * 86400000).toISOString().split("T")[0],
-    usageMinutes: 0,
-  }));
-}
-
 export function friendRecordToUser(edge: FriendEdge): User {
   const u = edge.user;
-  const analytics =
-    u.analytics?.length > 0 ? u.analytics : defaultAnalytics();
+  const analytics = Array.isArray(u.analytics) ? u.analytics : [];
   return {
     id: u.id,
     name: u.name || "Friend",
@@ -56,6 +48,7 @@ export function friendRecordToUser(edge: FriendEdge): User {
     friendIds: [],
     bio: u.bio?.trim() || "",
     joinDate: u.joinDate || "—",
+    friendshipId: edge.friendshipId,
   };
 }
 
@@ -120,6 +113,12 @@ export async function rejectFriendRequest(requestId: string): Promise<void> {
 
 export async function cancelFriendRequest(requestId: string): Promise<void> {
   await pb.send(`/friends/requests/${encodeURIComponent(requestId)}/cancel`, {
+    method: "POST",
+  });
+}
+
+export async function removeFriend(friendshipId: string): Promise<void> {
+  await pb.send(`/friends/${encodeURIComponent(friendshipId)}/remove`, {
     method: "POST",
   });
 }
