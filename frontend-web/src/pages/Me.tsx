@@ -6,12 +6,14 @@ import { PageHeader } from "@/components/screensplit/PageHeader";
 import { BottomNav } from "@/components/screensplit/BottomNav";
 import { AppCategoryBar } from "@/components/screensplit/AppCategoryBar";
 import { appDisplayName } from "@/lib/appDisplayName";
-import { LogOut } from "lucide-react";
+import { LogOut, Ticket, Store, ChevronRight } from "lucide-react";
 
 export default function Me() {
   const nav = useNavigate();
   const me = useStore(() => store.currentUser());
   const groups = useStore(() => store.groupsForCurrentUser());
+  const authRecord = pb.authStore.record as { is_partner?: boolean } | null;
+  const isPartner = Boolean(authRecord?.is_partner);
 
   if (!me) { nav("/welcome", { replace: true }); return null; }
   const usage = store.usageFor(me.id);
@@ -50,6 +52,44 @@ export default function Me() {
             <p className="font-display text-2xl font-bold">₹{totalOwed.toLocaleString("en-IN")}</p>
           </div>
         </div>
+
+        <section className="mt-6 space-y-3">
+          <button
+            type="button"
+            onClick={() => nav("/coupons")}
+            className="w-full chunky-card p-4 bg-card flex items-center gap-3 text-left active:scale-[0.98] transition-transform"
+          >
+            <div className="h-10 w-10 rounded-xl bg-accent border-2 border-foreground grid place-items-center shrink-0">
+              <Ticket className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-display font-black text-base leading-tight">My coupons</p>
+              <p className="text-xs text-muted-foreground">Rewards from walks to partners</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => nav("/partner")}
+            className="w-full chunky-card p-4 bg-card flex items-center gap-3 text-left active:scale-[0.98] transition-transform"
+          >
+            <div className="h-10 w-10 rounded-xl bg-primary border-2 border-foreground grid place-items-center shrink-0 text-primary-foreground">
+              <Store className="h-5 w-5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-display font-black text-base leading-tight">
+                {isPartner ? "Partner portal" : "Run a local business?"}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {isPartner
+                  ? "Manage your walk challenges and coupons"
+                  : "Create promoted walks and drive footfall"}
+              </p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          </button>
+        </section>
 
         {usage && (
           <section className="mt-6 chunky-card p-4 bg-card">

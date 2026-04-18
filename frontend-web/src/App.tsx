@@ -17,6 +17,9 @@ import SocialRank from "./pages/SocialRank";
 import ScreenUsageAdmin from "./pages/ScreenUsageAdmin";
 import Challenges from "./pages/Challenges";
 import ChallengeDetail from "./pages/ChallengeDetail";
+import GeoChallengeDetail from "./pages/GeoChallengeDetail";
+import MyCoupons from "./pages/MyCoupons";
+import PartnerPortal from "./pages/PartnerPortal";
 
 
 
@@ -42,6 +45,9 @@ const App = () => (
           <Route path="/screen-usage-admin" element={<ScreenUsageAdmin />} />
           <Route path="/challenges" element={<Challenges />} />
           <Route path="/challenge/:id" element={<ChallengeDetail />} />
+          <Route path="/walk/:id" element={<GeoChallengeDetail />} />
+          <Route path="/coupons" element={<MyCoupons />} />
+          <Route path="/partner" element={<PartnerPortal />} />
           <Route path="/me" element={<Me />} />
 
           <Route path="*" element={<NotFound />} />

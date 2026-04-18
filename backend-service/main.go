@@ -72,6 +72,9 @@ func main() {
 		routes.RegisterFriendRoutes(se)
 		routes.RegisterCrewRoutes(se)
 		routes.RegisterUsageRoutes(se)
+		routes.RegisterGeoRoutes(se)
+		routes.RegisterPartnerRoutes(se)
+		routes.RegisterCouponRoutes(se)
 
 		return se.Next()
 	})

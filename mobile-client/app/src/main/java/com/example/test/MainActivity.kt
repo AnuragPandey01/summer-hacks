@@ -1,12 +1,16 @@
 package com.example.test
 
+import android.Manifest
 import android.app.AppOpsManager
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Bundle
 import android.os.Process
 import android.provider.Settings
 import android.util.Log
+import android.webkit.GeolocationPermissions
+import android.webkit.WebChromeClient
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.TextView
@@ -14,6 +18,7 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
@@ -54,6 +59,29 @@ private val ScreenSplitInk = Color(0xFF18181F)
 class MainActivity : ComponentActivity() {
 
     private var webView: WebView? = null
+    private var pendingGeoCallback: ((Boolean) -> Unit)? = null
+
+    private val locationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { grants ->
+            val granted = grants.values.any { it }
+            pendingGeoCallback?.invoke(granted)
+            pendingGeoCallback = null
+        }
+
+    internal fun requestWebGeolocationPermission(onResult: (Boolean) -> Unit) {
+        val alreadyGranted = hasLocationPermission(this)
+        if (alreadyGranted) {
+            onResult(true)
+            return
+        }
+        pendingGeoCallback = onResult
+        locationPermissionLauncher.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION,
+            ),
+        )
+    }
 
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -205,8 +233,24 @@ private fun WebScreen(
                 WebView(activity).apply {
                     settings.javaScriptEnabled = true
                     settings.domStorageEnabled = true
+                    settings.setGeolocationEnabled(true)
                     addJavascriptInterface(OAuthJsBridge(activity), "ScreenSplitNative")
                     webViewClient = WebViewClient()
+                    webChromeClient = object : WebChromeClient() {
+                        override fun onGeolocationPermissionsShowPrompt(
+                            origin: String?,
+                            callback: GeolocationPermissions.Callback?,
+                        ) {
+                            val host = activity as? MainActivity
+                            if (host == null || callback == null || origin == null) {
+                                callback?.invoke(origin, false, false)
+                                return
+                            }
+                            host.requestWebGeolocationPermission { granted ->
+                                callback.invoke(origin, granted, true)
+                            }
+                        }
+                    }
                     loadUrl(url)
                     onWebViewCreated(this)
                 }
@@ -240,4 +284,16 @@ private fun isUsageStatsPermissionGranted(context: Context): Boolean {
         context.packageName,
     )
     return mode == AppOpsManager.MODE_ALLOWED
+}
+
+private fun hasLocationPermission(context: Context): Boolean {
+    val fine = ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_FINE_LOCATION,
+    ) == PackageManager.PERMISSION_GRANTED
+    val coarse = ContextCompat.checkSelfPermission(
+        context,
+        Manifest.permission.ACCESS_COARSE_LOCATION,
+    ) == PackageManager.PERMISSION_GRANTED
+    return fine || coarse
 }

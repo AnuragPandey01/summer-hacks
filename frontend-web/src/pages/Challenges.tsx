@@ -10,9 +10,12 @@ import {
   fetchSocialUsage,
   pbAuthRecordToUser,
 } from "@/lib/screenUsageApi";
-import { Zap, Target, Users, ArrowRight, Sparkles } from "lucide-react";
+import { Zap, Target, Users, ArrowRight, Sparkles, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { GeoChallengeCard } from "@/components/geo/GeoChallengeCard";
+import { listGeoChallenges, type GeoChallengeDTO } from "@/lib/geoApi";
+import { Button } from "@/components/ui/button";
 
 function pocketBaseErrorMessage(err: unknown): string {
   if (err instanceof ClientResponseError) {
@@ -28,11 +31,65 @@ export default function Challenges() {
   const me = useStore(() => store.currentUser());
   const challenges = useStore(() => store.getGlobalChallenges());
   const [, bump] = useState(0);
+  const [geoChallenges, setGeoChallenges] = useState<GeoChallengeDTO[]>([]);
+  const [geoLoading, setGeoLoading] = useState(false);
+  const [geoError, setGeoError] = useState<string | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [locationAsked, setLocationAsked] = useState(false);
 
   useEffect(() => {
     const unsub = store.subscribe(() => bump((n) => n + 1));
     return unsub;
   }, []);
+
+  const loadGeoChallenges = useCallback(
+    async (latLng?: { lat: number; lng: number }) => {
+      setGeoLoading(true);
+      setGeoError(null);
+      try {
+        const items = await listGeoChallenges(latLng);
+        items.sort((a, b) => {
+          if (a.distanceM !== undefined && b.distanceM !== undefined) {
+            return a.distanceM - b.distanceM;
+          }
+          if (a.isPromoted !== b.isPromoted) return a.isPromoted ? -1 : 1;
+          return b.created.localeCompare(a.created);
+        });
+        setGeoChallenges(items);
+      } catch (err) {
+        setGeoError(pocketBaseErrorMessage(err));
+      } finally {
+        setGeoLoading(false);
+      }
+    },
+    [],
+  );
+
+  useEffect(() => {
+    void loadGeoChallenges();
+  }, [loadGeoChallenges]);
+
+  const requestLocation = useCallback(() => {
+    if (!("geolocation" in navigator)) {
+      setGeoError("Geolocation not supported in this browser");
+      return;
+    }
+    setLocationAsked(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const next = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        };
+        setCoords(next);
+        void loadGeoChallenges(next);
+      },
+      (err) => {
+        setGeoError(err.message || "Location unavailable");
+      },
+      { enableHighAccuracy: true, maximumAge: 60000, timeout: 15000 },
+    );
+  }, [loadGeoChallenges]);
 
   const loadUsageForTasks = useCallback(async () => {
     if (!me) return;
@@ -71,6 +128,8 @@ export default function Challenges() {
   const queued = challenges.filter((c) => c.comingSoon);
   const individual = live.filter((c) => c.type === "individual");
   const group = live.filter((c) => c.type === "group");
+  const promotedGeo = geoChallenges.filter((c) => c.isPromoted);
+  const personalGeo = geoChallenges.filter((c) => !c.isPromoted);
 
   return (
     <div className="min-h-screen pb-32">
@@ -85,8 +144,77 @@ export default function Challenges() {
           }
         />
 
+        {/* Promoted Geo Section */}
+        {(promotedGeo.length > 0 || (!geoLoading && geoChallenges.length === 0 && geoError === null)) && (
+          <section className="mt-6">
+            <SectionHeader
+              icon={Sparkles}
+              title="Promoted near you"
+              subtitle="Walk, earn, get coupons"
+            />
+            {!coords && !locationAsked && (
+              <div className="chunky-card p-4 mb-4 bg-card flex items-start gap-3">
+                <MapPin className="h-5 w-5 mt-0.5 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold text-sm">Share your location</p>
+                  <p className="text-xs text-muted-foreground">
+                    We'll sort by distance so you see the closest partner spots first.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={requestLocation}
+                  className="shrink-0 font-black uppercase"
+                >
+                  Use location
+                </Button>
+              </div>
+            )}
+            <div className="space-y-4">
+              {promotedGeo.map((c) => (
+                <GeoChallengeCard
+                  key={c.id}
+                  challenge={c}
+                  onClick={() => nav(`/walk/${c.id}`)}
+                />
+              ))}
+              {promotedGeo.length === 0 && !geoLoading && !geoError && (
+                <div className="chunky-card p-4 bg-card text-center text-xs text-muted-foreground">
+                  No promoted walks yet. Check back soon!
+                </div>
+              )}
+              {geoError && (
+                <div className="chunky-card p-4 bg-red-50 border-red-200 text-xs text-red-700">
+                  {geoError}
+                </div>
+              )}
+            </div>
+          </section>
+        )}
+
+        {/* Personal Walks Section */}
+        {personalGeo.length > 0 && (
+          <section className="mt-10">
+            <SectionHeader
+              icon={MapPin}
+              title="Walk challenges"
+              subtitle="Move your body, earn XP"
+            />
+            <div className="space-y-4">
+              {personalGeo.map((c) => (
+                <GeoChallengeCard
+                  key={c.id}
+                  challenge={c}
+                  onClick={() => nav(`/walk/${c.id}`)}
+                />
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Individual Section */}
-        <section className="mt-6">
+        <section className="mt-10">
           <SectionHeader
             icon={Target}
             title="Screen Sabbath"
