@@ -1,93 +1,42 @@
-.oauth-page {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 100vh;
-  padding: 2rem 1rem;
-  box-sizing: border-box;
-}
-
-.oauth-card {
-  width: min(500px, 100%);
-  border: 1px solid var(--border);
-  border-radius: 14px;
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
   padding: 2rem;
-  text-align: left;
-  box-shadow: var(--shadow);
-  background: var(--bg);
+  text-align: center;
 }
 
-.eyebrow {
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  font-weight: 600;
-  color: var(--text);
-  margin-bottom: 0.6rem;
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
 }
 
-.subtitle {
-  margin-bottom: 1.25rem;
-}
-
-.auth-actions,
-.user-panel {
-  display: flex;
-  flex-direction: column;
-  gap: 0.8rem;
-}
-
-.google-btn,
-.secondary-btn {
-  border: 1px solid transparent;
-  border-radius: 10px;
-  padding: 0.75rem 1rem;
-  font-size: 1rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.google-btn {
-  background: var(--accent);
-  color: #fff;
-}
-
-.google-btn:disabled {
-  cursor: wait;
-  opacity: 0.7;
-}
-
-.secondary-btn {
-  background: var(--social-bg);
-  color: var(--text-h);
-  border-color: var(--border);
-}
-
-.hint {
-  font-size: 0.9rem;
-}
-
-.status {
-  border-radius: 8px;
-  padding: 0.7rem 0.8rem;
-  margin-top: 0.4rem;
-}
-
-.status.success {
-  background: rgba(22, 163, 74, 0.12);
-  color: #15803d;
-}
-
-.status.error {
-  background: rgba(239, 68, 68, 0.12);
-  color: #b91c1c;
-}
-
-@media (prefers-color-scheme: dark) {
-  .status.success {
-    color: #4ade80;
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
   }
-
-  .status.error {
-    color: #fca5a5;
+  to {
+    transform: rotate(360deg);
   }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
 }
